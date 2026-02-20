@@ -1,0 +1,163 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase/client";
+import { getAllJobs } from "@/lib/actions/job.action";
+import { Job } from "@/types";
+import Navbar from "@/components/Navbar";
+import JobCard from "@/components/JobCard";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Filter } from "lucide-react";
+
+export default function BrowseJobsPage() {
+  const router = useRouter();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        router.push("/sign-in");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  useEffect(() => {
+    filterJobs();
+  }, [searchTerm, locationFilter, statusFilter, jobs]);
+
+  const loadJobs = async () => {
+    setLoading(true);
+    const allJobs = await getAllJobs();
+    setJobs(allJobs);
+    setLoading(false);
+  };
+
+  const filterJobs = () => {
+    let filtered = jobs;
+
+    // Filter by status
+    if (statusFilter && statusFilter !== "all") {
+      filtered = filtered.filter((job) => job.status === statusFilter);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (job) =>
+          job.title.toLowerCase().includes(term) ||
+          job.description.toLowerCase().includes(term) ||
+          job.role.toLowerCase().includes(term) ||
+          job.techStack.some((tech) => tech.toLowerCase().includes(term))
+      );
+    }
+
+    // Filter by location
+    if (locationFilter) {
+      filtered = filtered.filter((job) =>
+        job.location.toLowerCase().includes(locationFilter.toLowerCase())
+      );
+    }
+
+    setFilteredJobs(filtered);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900" data-testid="page-title">
+            Browse Jobs
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Find your next opportunity and complete AI-powered interviews
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search jobs, roles, tech..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+                data-testid="search-input"
+              />
+            </div>
+
+            <Input
+              placeholder="Location"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              data-testid="location-filter"
+            />
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger data-testid="status-filter">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mb-4 text-sm text-gray-600">
+          {loading ? "Loading..." : `${filteredJobs.length} jobs found`}
+        </div>
+
+        {/* Jobs Grid */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading jobs...</p>
+          </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg">
+            <p className="text-gray-600">No jobs found matching your criteria</p>
+            <Button
+              onClick={() => {
+                setSearchTerm("");
+                setLocationFilter("");
+                setStatusFilter("all");
+              }}
+              variant="outline"
+              className="mt-4"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
