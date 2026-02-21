@@ -7,6 +7,7 @@ import { getInterviewById, createFeedback } from "@/lib/actions/interview.action
 import { Interview } from "@/types";
 import Navbar from "@/components/Navbar";
 import VoiceAgent from "@/components/VoiceAgent";
+import BeyondPresenceAvatar from "@/components/BeyondPresenceAvatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,9 @@ export default function MockInterviewSession() {
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+   // Avatar states for Beyond Presence
+  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
+  const [avatarListening, setAvatarListening] = useState(false);
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -247,22 +251,30 @@ export default function MockInterviewSession() {
             {/* Split Screen - AI Interviewer + User */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Panel - AI Interviewer */}
+              {/* Left Panel - AI Interviewer with Beyond Presence Avatar */}
               <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-purple-500/30">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     {/* AI Interviewer Avatar */}
-                    <div className="relative">
-                      <div className="h-48 w-48 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-2xl animate-pulse">
-                        <div className="h-40 w-40 rounded-full bg-gray-900 flex items-center justify-center">
-                          <Sparkles className="h-20 w-20 text-blue-400" />
-                        </div>
-                      </div>
-                      {/* Animated ring */}
-                      <div className="absolute inset-0 rounded-full border-4 border-blue-400 opacity-20 animate-ping"></div>
-                    </div>
-                    <h3 className="text-2xl font-bold text-white">AI Interviewer</h3>
-                    <Badge variant="outline" className="text-blue-400 border-blue-400">
-                      🔴 Live
+                     {/* Beyond Presence AI Avatar */}
+                    <BeyondPresenceAvatar
+                      isSpeaking={avatarSpeaking}
+                      isListening={avatarListening}
+                      className="w-full max-w-md"
+                      onReady={() => console.log("Beyond Presence avatar ready")}
+                      onError={(error) => {
+                        console.error("Avatar error:", error);
+                        toast.error("Avatar failed to load. Using fallback.");
+                      }}
+                    />
+                    <h3 className="text-2xl font-bold text-white" data-testid="ai-interviewer-label">
+                      AI Interviewer
+                    </h3>
+                    <Badge 
+                      variant="outline" 
+                      className={`${avatarSpeaking ? 'text-green-400 border-green-400' : 'text-blue-400 border-blue-400'}`}
+                    >
+                      {avatarSpeaking ? '🟢 Speaking' : '🔴 Live'}
                     </Badge>
                   </div>
                 </CardContent>
@@ -308,6 +320,8 @@ export default function MockInterviewSession() {
                   interviewId={interviewId}
                   applicationId={interview.applicationId}
                   questions={interview.questions}
+                     onSpeakingChange={setAvatarSpeaking}
+                  onListeningChange={setAvatarListening}
                 />
               </CardContent>
             </Card>

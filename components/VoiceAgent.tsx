@@ -29,6 +29,8 @@ interface VoiceAgentProps {
   applicationId: string;
   questions: string[];
   onComplete?: () => void;
+    onSpeakingChange?: (isSpeaking: boolean) => void;
+  onListeningChange?: (isListening: boolean) => void;
 }
 
 const VoiceAgent = ({
@@ -38,6 +40,8 @@ const VoiceAgent = ({
   applicationId,
   questions,
   onComplete,
+    onSpeakingChange,
+  onListeningChange,
 }: VoiceAgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -60,15 +64,22 @@ const VoiceAgent = ({
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
         setMessages((prev) => [...prev, newMessage]);
+          
+        // Notify listening state when user is speaking
+        if (message.role === "user" && onListeningChange) {
+          onListeningChange(true);
+        }
       }
     };
 
     const onSpeechStart = () => {
       setIsSpeaking(true);
+      if (onSpeakingChange) onSpeakingChange(false);
     };
 
     const onSpeechEnd = () => {
       setIsSpeaking(false);
+       if (onSpeakingChange) onSpeakingChange(true);
     };
 
     const onError = (error: Error) => {
