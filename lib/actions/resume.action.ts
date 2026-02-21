@@ -71,6 +71,67 @@ export async function createResumeAnalysis(
     // Analyze resume with AI
     const aiAnalysis = await analyzeResumeWithAI(resumeText, jobDescription);
 
+     // Transform categoryScores array to object structure
+    const categoryScoresObj = {
+      experience: 0,
+      education: 0,
+      skills: 0,
+      keywords: 0,
+      formatting: 0,
+    };
+
+    // Map AI response categories to expected structure
+    // Groq returns: "Format & Structure", "Keyword Optimization", "Experience Description", "Skills Relevance", "ATS Compatibility"
+    aiAnalysis.categoryScores.forEach((category) => {
+      const categoryName = category.category.toLowerCase();
+      if (categoryName.includes("experience")) {
+        categoryScoresObj.experience = category.score;
+      } else if (categoryName.includes("education")) {
+        categoryScoresObj.education = category.score;
+      } else if (categoryName.includes("skill")) {
+        categoryScoresObj.skills = category.score;
+      } else if (categoryName.includes("keyword")) {
+        categoryScoresObj.keywords = category.score;
+      // } else if (categoryName.includes("format") || categoryName.includes("structure")) {
+      } else if (categoryName.includes("format") || categoryName.includes("structure") || categoryName.includes("ats compatibility")) {
+        categoryScoresObj.formatting = category.score;
+      }
+    });
+
+     // If some categories weren't found, use averages
+    const scores = Object.values(categoryScoresObj).filter(s => s > 0);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 70;
+    
+    if (categoryScoresObj.experience === 0) categoryScoresObj.experience = avgScore;
+    if (categoryScoresObj.education === 0) categoryScoresObj.education = avgScore;
+    if (categoryScoresObj.skills === 0 && aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("skill"))) {
+      categoryScoresObj.skills = aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("skill"))!.score;
+    } else if (categoryScoresObj.skills === 0) {
+      categoryScoresObj.skills = avgScore;
+    }
+    if (categoryScoresObj.keywords === 0 && aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("keyword"))) {
+      categoryScoresObj.keywords = aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("keyword"))!.score;
+    } else if (categoryScoresObj.keywords === 0) {
+      categoryScoresObj.keywords = avgScore;
+    }
+    if (categoryScoresObj.formatting === 0 && aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("format") || c.category.toLowerCase().includes("ats"))) {
+      const formatCat = aiAnalysis.categoryScores.find(c => c.category.toLowerCase().includes("format") || c.category.toLowerCase().includes("ats"));
+      if (formatCat) categoryScoresObj.formatting = formatCat.score;
+    } else if (categoryScoresObj.formatting === 0) {
+      categoryScoresObj.formatting = avgScore;
+    }
+
+    // Convert ATS compatibility string to number
+    const atsCompatibilityMap: Record<string, number> = {
+      "Excellent": 90,
+      "Good": 75,
+      "Fair": 60,
+      "Poor": 40,
+    };
+    const atsScore = atsCompatibilityMap[aiAnalysis.atsCompatibility] || 60;
+
+
+
     const analysisId = generateId();
     const analysis: ResumeAnalysis = {
       id: analysisId,
@@ -79,11 +140,17 @@ export async function createResumeAnalysis(
       fileName,
       resumeUrl,
       overallScore: aiAnalysis.overallScore,
-      categoryScores: aiAnalysis.categoryScores,
+      // categoryScores: aiAnalysis.categoryScores,
+        categoryScores: categoryScoresObj,
       strengths: aiAnalysis.strengths,
       improvements: aiAnalysis.improvements,
-      keywords: aiAnalysis.keywords,
-      atsCompatibility: aiAnalysis.atsCompatibility,
+      // keywords: aiAnalysis.keywords,
+      // atsCompatibility: aiAnalysis.atsCompatibility,
+      keywords: {
+        matched: aiAnalysis.keywords.found,
+        missing: aiAnalysis.keywords.missing,
+      },
+      atsCompatibility: atsScore,
       createdAt: new Date().toISOString(),
     };
 

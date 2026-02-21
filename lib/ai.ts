@@ -16,7 +16,8 @@ export async function generateInterviewFeedback({
     const formattedTranscript = JSON.stringify(transcript, null, 2);
     
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash-001"),
+      // ✅ FIXED: Use Gemini 1.5 Flash which is v2 compatible
+      model: google("gemini-1.5-flash"),
       schema: feedbackSchema,
       prompt: `
         You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
@@ -61,7 +62,10 @@ export async function generateInterviewQuestions({
   count: number;
 }): Promise<string[]> {
   try {
-    const prompt = `Generate ${count} technical interview questions for the following role:
+    // ✅ FIXED: Use Gemini 1.5 Flash here too
+    const { text } = await generateText({
+      model: google("gemini-1.5-flash"),
+      prompt: `Generate ${count} technical interview questions for the following role:
     
     Role: ${role}
     Level: ${level}
@@ -70,19 +74,15 @@ export async function generateInterviewQuestions({
     Job Description: ${jobDescription}
     
     Generate practical, role-specific questions that assess both technical knowledge and problem-solving abilities.
-    Return ONLY the questions, one per line, numbered from 1 to ${count}.`;
-
-    const { text } = await generateText({
-      model: google("gemini-2.0-flash-001"),
-      prompt,
+    Return ONLY the questions, one per line, numbered from 1 to ${count}.`,
       experimental_telemetry: { isEnabled: false },
     });
 
-    // FIXED: Use regex to split on newlines
+    // Parse questions from the response
     const questionLines = text
-      .split(/\r?\n/)  // Fixed: Use regex to split on newlines
-      .filter(line => line.trim().length > 0 && /^\d+\./.test(line.trim()))  // Fixed regex pattern
-      .map(line => line.replace(/^\d+\.\s*/, '').trim())  // Fixed regex pattern
+      .split(/\r?\n/)
+      .filter(line => line.trim().length > 0 && /^\d+\./.test(line.trim()))
+      .map(line => line.replace(/^\d+\.\s*/, '').trim())
       .slice(0, count);
 
     return questionLines.length >= count ? questionLines : [
