@@ -97,6 +97,7 @@ export async function createResumeAnalysis(
         categoryScoresObj.formatting = category.score;
       }
     });
+    
 
      // If some categories weren't found, use averages
     const scores = Object.values(categoryScoresObj).filter(s => s > 0);
