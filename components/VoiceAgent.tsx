@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
-import { interviewer } from "@/constants";
+import { interviewer } from "@/lib/constants"
 import { createFeedback } from "@/lib/actions/interview.action";
 import { toast } from "sonner";
 
@@ -140,7 +140,7 @@ const VoiceAgent = ({
       const formattedQuestions = questions
         .map((question, idx) => `${idx + 1}. ${question}`)
         .join("\n"); // FIXED: Changed from \"
-\"
+")
 
       await vapi.start(interviewer, {
         variableValues: {

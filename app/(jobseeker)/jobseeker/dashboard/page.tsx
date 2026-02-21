@@ -6,17 +6,20 @@ import Link from "next/link";
 import { auth } from "@/lib/firebase/client";
 import { getApplicationsByApplicant } from "@/lib/actions/application.action";
 import { getFeedbacksByUser } from "@/lib/actions/interview.action";
-import { Application, Feedback } from "@/types";
+import { getLatestResumeAnalysis } from "@/lib/actions/resume.action"; // Add this import
+import { Application, Feedback, ResumeAnalysis } from "@/types";
 import Navbar from "@/components/Navbar";
 import ApplicationCard from "@/components/ApplicationCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Briefcase, FileText, Award, TrendingUp, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge"; // Add this import
+import { Briefcase, FileText, Award, TrendingUp, Clock, Upload } from "lucide-react"; // Add Upload to imports
 
 export default function JobSeekerDashboard() {
   const router = useRouter();
   const [applications, setApplications] = useState<Application[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [latestResume, setLatestResume] = useState<ResumeAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,14 +35,21 @@ export default function JobSeekerDashboard() {
 
   const loadData = async (userId: string) => {
     setLoading(true);
-    const [apps, feedbacksList] = await Promise.all([
-      getApplicationsByApplicant(userId),
-      getFeedbacksByUser(userId),
-    ]);
+    try {
+      const [apps, feedbacksList, resumeAnalysis] = await Promise.all([
+        getApplicationsByApplicant(userId),
+        getFeedbacksByUser(userId),
+        getLatestResumeAnalysis(userId),
+      ]);
 
-    setApplications(apps);
-    setFeedbacks(feedbacksList);
-    setLoading(false);
+      setApplications(apps);
+      setFeedbacks(feedbacksList);
+      setLatestResume(resumeAnalysis);
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pendingInterviews = applications.filter(
@@ -54,8 +64,6 @@ export default function JobSeekerDashboard() {
     feedbacks.length > 0
       ? Math.round(feedbacks.reduce((sum, f) => sum + f.totalScore, 0) / feedbacks.length)
       : 0;
-
-  const acceptedApps = applications.filter((app) => app.status === "accepted").length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,6 +150,77 @@ export default function JobSeekerDashboard() {
                 </CardContent>
               </Card>
             )}
+            
+            {/* Resume Analyzer Section */}
+            <Card className="mb-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  ATS Resume Checker
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {latestResume ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <p className="font-medium text-gray-900 mb-1">Latest Analysis</p>
+                        <p className="text-sm text-gray-600">{latestResume.fileName}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(latestResume.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <div className={`text-3xl font-bold ${
+                            latestResume.overallScore >= 80 ? "text-green-600" :
+                            latestResume.overallScore >= 60 ? "text-yellow-600" :
+                            "text-red-600"
+                          }`}>
+                            {latestResume.overallScore}
+                          </div>
+                          <p className="text-xs text-gray-500">/ 100</p>
+                        </div>
+                        <Badge className={`
+                          ${latestResume.atsCompatibility === "Excellent" ? "bg-green-100 text-green-800" :
+                            latestResume.atsCompatibility === "Good" ? "bg-blue-100 text-blue-800" :
+                            latestResume.atsCompatibility === "Fair" ? "bg-yellow-100 text-yellow-800" :
+                            "bg-red-100 text-red-800"}
+                        `}>
+                          {latestResume.atsCompatibility}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link href={`/jobseeker/resume/results/${latestResume.id}`} className="flex-1">
+                        <Button variant="outline" className="w-full" size="sm">
+                          View Analysis
+                        </Button>
+                      </Link>
+                      <Link href="/jobseeker/resume" className="flex-1">
+                        <Button className="w-full bg-purple-600 hover:bg-purple-700" size="sm">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Analyze New
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <FileText className="h-12 w-12 text-purple-400 mx-auto mb-3" />
+                    <p className="text-gray-700 mb-3">
+                      Get AI-powered ATS analysis for your resume
+                    </p>
+                    <Link href="/jobseeker/resume">
+                      <Button className="bg-purple-600 hover:bg-purple-700" data-testid="analyze-resume-button">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Analyze Your Resume
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Recent Applications */}
             <Card className="mb-6">
@@ -174,7 +253,7 @@ export default function JobSeekerDashboard() {
 
             {/* Interview Performance */}
             {feedbacks.length > 0 && (
-              <Card>
+              <Card className="mb-6">
                 <CardHeader>
                   <CardTitle>Interview Performance History</CardTitle>
                 </CardHeader>
@@ -208,12 +287,12 @@ export default function JobSeekerDashboard() {
             )}
 
             {/* Quick Actions */}
-            <Card className="mt-6">
+            <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Link href="/jobseeker/jobs">
                     <Button className="w-full" variant="outline">
                       Browse Jobs
@@ -222,6 +301,12 @@ export default function JobSeekerDashboard() {
                   <Link href="/jobseeker/applications">
                     <Button className="w-full" variant="outline">
                       View Applications
+                    </Button>
+                  </Link>
+                  <Link href="/jobseeker/resume">
+                    <Button className="w-full" variant="outline">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Resume Analyzer
                     </Button>
                   </Link>
                 </div>

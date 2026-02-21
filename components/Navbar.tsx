@@ -14,6 +14,7 @@ import {
   User,
   FileText,
   Home,
+   FileCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -82,6 +83,12 @@ export default function Navbar() {
                     <Button variant="ghost" size="sm" className="gap-2">
                       <FileText className="h-4 w-4" />
                       My Applications
+                    </Button>
+                  </Link>
+                   <Link href="/jobseeker/resume">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <FileCheck className="h-4 w-4" />
+                      Resume Analyzer
                     </Button>
                   </Link>
                   <Link href="/jobseeker/dashboard">
