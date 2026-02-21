@@ -1,10 +1,10 @@
-""use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/firebase/client";
-import { getResumeAnalysesByStudent, deleteResumeAnalysis } from "@/lib/actions/resume.action";
+import { getResumeAnalysesByStudent, deleteResumeAnalysis } from "@/lib/actions/resume-supabase.action";
 import { ResumeAnalysis } from "@/types";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,4 +217,3 @@ export default function ResumeAnalysisHistoryPage() {
     </div>
   );
 }
-"

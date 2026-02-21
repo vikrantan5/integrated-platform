@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/lib/firebase/client";
-import { uploadResumeFile, createResumeAnalysis } from "@/lib/actions/resume.action";
+import { uploadResumeFile, createResumeAnalysis } from "@/lib/actions/resume-supabase.action";
 import { getJobById } from "@/lib/actions/job.action";
 import { Job } from "@/types";
 import Navbar from "@/components/Navbar";

@@ -7,13 +7,14 @@ import { auth } from "@/lib/firebase/client";
 import { getApplicationsByApplicant } from "@/lib/actions/application.action";
 import { getFeedbacksByUser } from "@/lib/actions/interview.action";
 import { getLatestResumeAnalysis } from "@/lib/actions/resume.action"; // Add this import
-import { Application, Feedback, ResumeAnalysis } from "@/types";
+import { Application, Feedback, ResumeAnalysis } from "@/lib/actions/resume-supabase.action";
 import Navbar from "@/components/Navbar";
 import ApplicationCard from "@/components/ApplicationCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; // Add this import
-import { Briefcase, FileText, Award, TrendingUp, Clock, Upload } from "lucide-react"; // Add Upload to imports
+// import { Briefcase, FileText, Award, TrendingUp, Clock, Upload } from "lucide-react"; // Add Upload to imports
+import { Briefcase, FileText, Award, TrendingUp, Clock, Upload, Sparkles } from "lucide-react"
 
 export default function JobSeekerDashboard() {
   const router = useRouter();
@@ -150,6 +151,49 @@ export default function JobSeekerDashboard() {
                 </CardContent>
               </Card>
             )}
+
+               {/* AI Mock Interview Section */}
+            <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-blue-600" />
+                  AI Mock Interview Practice
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-gray-700 mb-3">
+                      Practice your interview skills with our AI interviewer. Get personalized questions based on your role and receive detailed feedback.
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                      <div className="text-center p-2 bg-white rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">5</p>
+                        <p className="text-xs text-gray-600">Questions</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg">
+                        <p className="text-2xl font-bold text-purple-600">AI</p>
+                        <p className="text-xs text-gray-600">Powered</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg">
+                        <p className="text-2xl font-bold text-green-600">✓</p>
+                        <p className="text-xs text-gray-600">Feedback</p>
+                      </div>
+                      <div className="text-center p-2 bg-white rounded-lg">
+                        <p className="text-2xl font-bold text-orange-600">🎯</p>
+                        <p className="text-xs text-gray-600">Personalized</p>
+                      </div>
+                    </div>
+                  </div>
+                  <Link href="/mock-interview/setup">
+                    <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" data-testid="start-mock-interview-button">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Start AI Mock Interview
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
             
             {/* Resume Analyzer Section */}
             <Card className="mb-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">

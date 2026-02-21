@@ -140,7 +140,7 @@ const VoiceAgent = ({
       const formattedQuestions = questions
         .map((question, idx) => `${idx + 1}. ${question}`)
         .join("\n"); // FIXED: Changed from \"
-")
+
 
       await vapi.start(interviewer, {
         variableValues: {
