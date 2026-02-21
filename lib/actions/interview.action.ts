@@ -25,7 +25,7 @@ export async function createInterview(params: {
       role,
       level,
       techStack: techstack,
-      experience,
+      experience: experience.toString(),
       jobDescription,
       count: 5,
     });

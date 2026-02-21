@@ -234,7 +234,7 @@ export default function MockInterviewSession() {
         {mode === "voice" ? (
           /* SPLIT-SCREEN VOICE INTERVIEW UI */
           <div className="space-y-6">
-            {/* Progress Bar */}
+            {/* Progress Bar
             {mode === "text" && (
               <div className="text-center">
                 <p className="text-sm text-gray-400 mb-2">
@@ -242,7 +242,7 @@ export default function MockInterviewSession() {
                 </p>
                 <Progress value={progress} className="w-full max-w-md mx-auto" />
               </div>
-            )}
+            )} */}
 
             {/* Split Screen - AI Interviewer + User */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

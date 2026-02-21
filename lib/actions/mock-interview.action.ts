@@ -27,7 +27,7 @@ export async function createMockInterview(
       role,
       level,
       techStack: techstack,
-      experience,
+       experience: experience.toString(),
       jobDescription: `Mock interview for ${role} position at ${level} level`,
       count: 5,
     });

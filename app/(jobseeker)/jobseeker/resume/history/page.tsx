@@ -71,20 +71,12 @@ export default function ResumeAnalysisHistoryPage() {
     return "text-red-600";
   };
 
-  const getCompatibilityColor = (compatibility: string) => {
-    switch (compatibility) {
-      case "Excellent":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "Good":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Fair":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      case "Poor":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
+const getCompatibilityColor = (compatibility: number) => {
+    if (compatibility >= 80) return "bg-green-100 text-green-800 border-green-300";
+    if (compatibility >= 60) return "bg-blue-100 text-blue-800 border-blue-300";
+    if (compatibility >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-300";
+    return "bg-red-100 text-red-800 border-red-300";
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -162,18 +154,21 @@ export default function ResumeAnalysisHistoryPage() {
                   <Badge
                     className={`${getCompatibilityColor(analysis.atsCompatibility)} border w-full justify-center`}
                   >
-                    {analysis.atsCompatibility} ATS
+                   {analysis.atsCompatibility >= 80 ? "Excellent" :
+                      analysis.atsCompatibility >= 60 ? "Good" :
+                      analysis.atsCompatibility >= 40 ? "Fair" : "Poor"} ATS
                   </Badge>
 
                   <div className="space-y-2">
                     <div className="text-sm">
                       <span className="font-medium text-gray-700">Top Categories:</span>
                       <div className="mt-1 space-y-1">
-                        {analysis.categoryScores.slice(0, 2).map((cat, idx) => (
+                        {/* {analysis.categoryScores.slice(0, 2).map((cat, idx) => ( */}
+                        {Object.entries(analysis.categoryScores).slice(0, 2).map(([category, score], idx) => (
                           <div key={idx} className="flex justify-between text-xs">
-                            <span className="text-gray-600">{cat.category}</span>
-                            <span className={`font-medium ${getScoreColor(cat.score)}`}>
-                              {cat.score}
+                           <span className="text-gray-600 capitalize">{category}</span>
+                            <span className={`font-medium ${getScoreColor(score as number)}`}>
+                              {score}
                             </span>
                           </div>
                         ))}

@@ -66,19 +66,10 @@ export default function ResumeAnalysisResultsPage() {
     return "bg-red-600";
   };
 
-  const getCompatibilityColor = (compatibility: string) => {
-    switch (compatibility) {
-      case "Excellent":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "Good":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "Fair":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      case "Poor":
-        return "bg-red-100 text-red-800 border-red-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
+  const getCompatibilityColor = (compatibility: number) => {
+    if (compatibility >= 80) return "bg-green-100 text-green-800 border-green-300";
+    if (compatibility >= 60) return "bg-blue-100 text-blue-800 border-blue-300";
+    if (compatibility >= 40) return "bg-yellow-100 text-yellow-800 border-yellow-300";
   };
 
   if (loading) {
@@ -161,7 +152,9 @@ export default function ResumeAnalysisResultsPage() {
                     className={`${getCompatibilityColor(analysis.atsCompatibility)} border px-3 py-1`}
                     data-testid="ats-compatibility"
                   >
-                    {analysis.atsCompatibility} ATS Compatibility
+                   {analysis.atsCompatibility >= 80 ? "Excellent" :
+                      analysis.atsCompatibility >= 60 ? "Good" :
+                      analysis.atsCompatibility >= 40 ? "Fair" : "Poor"} ATS Compatibility
                   </Badge>
                 </div>
               </div>
@@ -184,16 +177,16 @@ export default function ResumeAnalysisResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {analysis.categoryScores.map((category, idx) => (
+              {/* {analysis.categoryScores.map((category, idx) => ( */}
+              {Object.entries(analysis.categoryScores).map(([category, score], idx) => (
                 <div key={idx} className="space-y-2" data-testid={`category-${idx}`}>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{category.category}</span>
-                    <span className={`font-bold ${getScoreColor(category.score)}`}>
-                      {category.score}/100
+                     <span className="font-medium text-gray-900 capitalize">{category}</span>
+                    <span className={`font-bold ${getScoreColor(score as number)}`}>
+                      {score}/100
                     </span>
                   </div>
-                  <Progress value={category.score} className="h-2" />
-                  <p className="text-sm text-gray-600 mt-2">{category.feedback}</p>
+                  <Progress value={score as number} className="h-2" />
                 </div>
               ))}
             </div>
@@ -252,17 +245,17 @@ export default function ResumeAnalysisResultsPage() {
               <div>
                 <h3 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" />
-                  Found Keywords
+                  Matched Keywords
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {analysis.keywords.found.length > 0 ? (
-                    analysis.keywords.found.map((keyword, idx) => (
+                     {analysis.keywords.matched.length > 0 ? (
+                    analysis.keywords.matched.map((keyword, idx) => (
                       <Badge key={idx} variant="secondary" className="bg-green-100 text-green-800">
                         {keyword}
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-600">No keywords found</p>
+                   <p className="text-sm text-gray-600">No keywords matched</p>
                   )}
                 </div>
               </div>

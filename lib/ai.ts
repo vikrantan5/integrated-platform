@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { feedbackSchema } from "./constants";
 
@@ -47,14 +47,60 @@ export async function generateInterviewFeedback({
 // Also export generateInterviewQuestions if you need it
 export async function generateInterviewQuestions({
   role,
+  level,
   techStack,
   experience,
+  jobDescription,
+  count,
 }: {
   role: string;
+  level: string;
   techStack: string[];
   experience: string;
-}) {
-  // Your questions generation logic here
-  // This is just a placeholder - implement as needed
-  return [];
+  jobDescription: string;
+  count: number;
+}): Promise<string[]> {
+  try {
+    const prompt = `Generate ${count} technical interview questions for the following role:
+    
+    Role: ${role}
+    Level: ${level}
+    Tech Stack: ${techStack.join(", ")}
+    Experience Required: ${experience} years
+    Job Description: ${jobDescription}
+    
+    Generate practical, role-specific questions that assess both technical knowledge and problem-solving abilities.
+    Return ONLY the questions, one per line, numbered from 1 to ${count}.`;
+
+    const { text } = await generateText({
+      model: google("gemini-2.0-flash-001"),
+      prompt,
+      experimental_telemetry: { isEnabled: false },
+    });
+
+    // FIXED: Use regex to split on newlines
+    const questionLines = text
+      .split(/\r?\n/)  // Fixed: Use regex to split on newlines
+      .filter(line => line.trim().length > 0 && /^\d+\./.test(line.trim()))  // Fixed regex pattern
+      .map(line => line.replace(/^\d+\.\s*/, '').trim())  // Fixed regex pattern
+      .slice(0, count);
+
+    return questionLines.length >= count ? questionLines : [
+      "Tell me about your experience with this tech stack.",
+      "Describe a challenging project you worked on.",
+      "How do you approach problem-solving?",
+      "What are your strengths and areas for improvement?",
+      "Why are you interested in this role?"
+    ];
+  } catch (error) {
+    console.error("Error generating interview questions:", error);
+    // Return default questions on error
+    return [
+      "Tell me about your experience with this tech stack.",
+      "Describe a challenging project you worked on.",
+      "How do you approach problem-solving?",
+      "What are your strengths and areas for improvement?",
+      "Why are you interested in this role?"
+    ];
+  }
 }

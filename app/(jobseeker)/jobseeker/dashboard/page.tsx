@@ -7,7 +7,9 @@ import { auth } from "@/lib/firebase/client";
 import { getApplicationsByApplicant } from "@/lib/actions/application.action";
 import { getFeedbacksByUser } from "@/lib/actions/interview.action";
 import { getLatestResumeAnalysis } from "@/lib/actions/resume.action"; // Add this import
-import { Application, Feedback, ResumeAnalysis } from "@/lib/actions/resume-supabase.action";
+// import { Application, Feedback, ResumeAnalysis } from "@/lib/actions/resume-supabase.action";
+import { Application, Feedback } from "@/types";
+import type { ResumeAnalysis } from "@/types";
 import Navbar from "@/components/Navbar";
 import ApplicationCard from "@/components/ApplicationCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -225,14 +227,16 @@ export default function JobSeekerDashboard() {
                           </div>
                           <p className="text-xs text-gray-500">/ 100</p>
                         </div>
-                        <Badge className={`
-                          ${latestResume.atsCompatibility === "Excellent" ? "bg-green-100 text-green-800" :
-                            latestResume.atsCompatibility === "Good" ? "bg-blue-100 text-blue-800" :
-                            latestResume.atsCompatibility === "Fair" ? "bg-yellow-100 text-yellow-800" :
-                            "bg-red-100 text-red-800"}
-                        `}>
-                          {latestResume.atsCompatibility}
-                        </Badge>
+                       <Badge className={`
+  ${latestResume.atsCompatibility >= 80 ? "bg-green-100 text-green-800" :
+    latestResume.atsCompatibility >= 60 ? "bg-blue-100 text-blue-800" :
+    latestResume.atsCompatibility >= 40 ? "bg-yellow-100 text-yellow-800" :
+    "bg-red-100 text-red-800"}  // Added fallback for scores below 40
+`}>
+  {latestResume.atsCompatibility >= 80 ? "Excellent" :
+   latestResume.atsCompatibility >= 60 ? "Good" :
+   latestResume.atsCompatibility >= 40 ? "Fair" : "Poor"}
+</Badge>
                       </div>
                     </div>
                     <div className="flex gap-2">

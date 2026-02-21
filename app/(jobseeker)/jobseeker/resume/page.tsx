@@ -115,7 +115,8 @@ function ResumeAnalyzerContent() {
         fileName: file.name,
         resumeUrl: uploadResult.resumeUrl,
         resumeText: uploadResult.resumeText,
-        jobDescription: job?.description,
+        // jobDescription: job?.description,
+            jobDescription: job?.description || "",
       });
 
       if (analysisResult.success && analysisResult.analysisId) {

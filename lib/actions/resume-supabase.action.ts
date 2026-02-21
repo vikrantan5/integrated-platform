@@ -70,6 +70,48 @@ export async function createResumeAnalysis(
     // Analyze resume with AI
     const aiAnalysis = await analyzeResumeWithAI(resumeText, jobDescription);
 
+
+    
+       // Convert array categoryScores to object format
+    const categoryScoresObj = {
+      experience: 0,
+      education: 0,
+      skills: 0,
+      keywords: 0,
+      formatting: 0,
+    };
+
+    // Map category scores from array to object
+    aiAnalysis.categoryScores.forEach((cat) => {
+      const categoryKey = cat.category.toLowerCase().replace(/[^a-z]/g, '');
+      if (categoryKey.includes('format') || categoryKey.includes('structure')) {
+        categoryScoresObj.formatting = cat.score;
+      } else if (categoryKey.includes('experience')) {
+        categoryScoresObj.experience = cat.score;
+      } else if (categoryKey.includes('education')) {
+        categoryScoresObj.education = cat.score;
+      } else if (categoryKey.includes('skill')) {
+        categoryScoresObj.skills = cat.score;
+      } else if (categoryKey.includes('keyword')) {
+        categoryScoresObj.keywords = cat.score;
+      }
+    });
+
+    // Convert atsCompatibility string to number
+    const atsCompatibilityMap = {
+      "Excellent": 90,
+      "Good": 75,
+      "Fair": 50,
+      "Poor": 30,
+    };
+    const atsCompatibilityNumber = atsCompatibilityMap[aiAnalysis.atsCompatibility] || 50;
+
+    // Convert keywords format
+    const keywordsObj = {
+      matched: aiAnalysis.keywords.found || [],
+      missing: aiAnalysis.keywords.missing || [],
+    };
+
     const analysisId = generateId();
     const analysis: ResumeAnalysis = {
       id: analysisId,
@@ -78,11 +120,12 @@ export async function createResumeAnalysis(
       fileName,
       resumeUrl,
       overallScore: aiAnalysis.overallScore,
-      categoryScores: aiAnalysis.categoryScores,
+      // categoryScores: aiAnalysis.categoryScores,
+      categoryScores: categoryScoresObj,
       strengths: aiAnalysis.strengths,
       improvements: aiAnalysis.improvements,
-      keywords: aiAnalysis.keywords,
-      atsCompatibility: aiAnalysis.atsCompatibility,
+      keywords: keywordsObj,
+      atsCompatibility: atsCompatibilityNumber,
       createdAt: new Date().toISOString(),
     };
 
@@ -94,11 +137,12 @@ export async function createResumeAnalysis(
       file_name: fileName,
       resume_url: resumeUrl,
       overall_score: aiAnalysis.overallScore,
-      category_scores: aiAnalysis.categoryScores,
+      // category_scores: aiAnalysis.categoryScores,
+      category_scores: categoryScoresObj,
       strengths: aiAnalysis.strengths,
       improvements: aiAnalysis.improvements,
-      keywords: aiAnalysis.keywords,
-      ats_compatibility: aiAnalysis.atsCompatibility,
+      keywords: keywordsObj,
+      ats_compatibility: atsCompatibilityNumber,
       created_at: new Date().toISOString(),
     });
 

@@ -118,3 +118,37 @@ export interface RouteParams {
   params: Promise<Record<string, string>>;
   searchParams: Promise<Record<string, string>>;
 }
+
+
+export interface ResumeAnalysis {
+  id: string;
+  studentId: string;
+  jobId?: string | null;
+  fileName: string;
+  resumeUrl: string;
+  overallScore: number;
+  categoryScores: {
+    experience: number;
+    education: number;
+    skills: number;
+    keywords: number;
+    formatting: number;
+  };
+  strengths: string[];
+  improvements: string[];
+  keywords: {
+    matched: string[];
+    missing: string[];
+  };
+  atsCompatibility: number;
+  createdAt: string;
+}
+
+export interface CreateResumeAnalysisParams {
+  studentId: string;
+  jobId?: string;
+  fileName: string;
+  resumeUrl: string;
+  resumeText: string;
+  jobDescription: string;
+}
