@@ -41,7 +41,29 @@ export default function FeedbackPage() {
     ]);
 
     setInterview(interviewData);
-    setFeedback(feedbackData);
+    
+    // Normalize feedback data to ensure it matches the expected structure
+    if (feedbackData) {
+      const normalizedFeedback = {
+        ...feedbackData,
+        // Ensure categoryScores is an array and has the correct field names
+        categoryScores: Array.isArray(feedbackData.categoryScores) 
+          ? feedbackData.categoryScores.map((cat: any) => ({
+              name: cat.name || cat.category || "Unknown Category",
+              score: cat.score || 0,
+              comment: cat.comment || cat.feedback || "" // Map 'feedback' to 'comment' if needed
+            }))
+          : [],
+        // Ensure other fields are arrays
+        strengths: Array.isArray(feedbackData.strengths) ? feedbackData.strengths : [],
+        areasForImprovement: Array.isArray(feedbackData.areasForImprovement) ? feedbackData.areasForImprovement : [],
+        transcript: Array.isArray(feedbackData.transcript) ? feedbackData.transcript : []
+      };
+      setFeedback(normalizedFeedback);
+    } else {
+      setFeedback(null);
+    }
+    
     setLoading(false);
   };
 
@@ -111,79 +133,89 @@ export default function FeedbackPage() {
         </Card>
 
         {/* Category Scores */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Performance by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {feedback.categoryScores.map((category, idx) => (
-                <div key={idx} className="border rounded-lg p-4" data-testid={`category-${idx}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{category.name}</h3>
-                    <span className={`text-2xl font-bold ${getScoreColor(category.score)}`}>
-                      {category.score}
-                    </span>
+        {feedback.categoryScores && feedback.categoryScores.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Performance by Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {feedback.categoryScores.map((category, idx) => (
+                  <div key={idx} className="border rounded-lg p-4" data-testid={`category-${idx}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold">{category.name}</h3>
+                      <span className={`text-2xl font-bold ${getScoreColor(category.score)}`}>
+                        {category.score}
+                      </span>
+                    </div>
+                    <Progress value={category.score} className="mb-2" />
+                    {category.comment && (
+                      <p className="text-sm text-gray-600">{category.comment}</p>
+                    )}
                   </div>
-                  <Progress value={category.score} className="mb-2" />
-                  <p className="text-sm text-gray-600">{category.comment}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Strengths */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              Strengths
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {feedback.strengths.map((strength, idx) => (
-                <li key={idx} className="flex items-start gap-2" data-testid={`strength-${idx}`}>
-                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-gray-700">{strength}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        {feedback.strengths && feedback.strengths.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Strengths
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {feedback.strengths.map((strength, idx) => (
+                  <li key={idx} className="flex items-start gap-2" data-testid={`strength-${idx}`}>
+                    <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{strength}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Areas for Improvement */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingDown className="h-5 w-5 text-orange-600" />
-              Areas for Improvement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {feedback.areasForImprovement.map((area, idx) => (
-                <li key={idx} className="flex items-start gap-2" data-testid={`improvement-${idx}`}>
-                  <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                    <span className="text-xs text-orange-600 font-bold">{idx + 1}</span>
-                  </div>
-                  <span className="text-gray-700">{area}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        {feedback.areasForImprovement && feedback.areasForImprovement.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 text-orange-600" />
+                Areas for Improvement
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {feedback.areasForImprovement.map((area, idx) => (
+                  <li key={idx} className="flex items-start gap-2" data-testid={`improvement-${idx}`}>
+                    <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center mt-0.5 flex-shrink-0">
+                      <span className="text-xs text-orange-600 font-bold">{idx + 1}</span>
+                    </div>
+                    <span className="text-gray-700">{area}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Final Assessment */}
-        <Card className="mb-6 bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle>Final Assessment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-800 italic" data-testid="final-assessment">"{feedback.finalAssessment}"</p>
-          </CardContent>
-        </Card>
+        {feedback.finalAssessment && (
+          <Card className="mb-6 bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle>Final Assessment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-800 italic" data-testid="final-assessment">"{feedback.finalAssessment}"</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Transcript (Optional) */}
         {feedback.transcript && feedback.transcript.length > 0 && (

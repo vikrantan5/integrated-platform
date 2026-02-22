@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { ResumeAnalysis, CreateResumeAnalysisParams } from "@/types";
 import { generateId } from "@/lib/utils";
 import {
@@ -23,7 +23,7 @@ export async function uploadResumeFile(
     const uniqueFileName = `${userId}/${timestamp}-${fileName}`;
 
     // Upload file to Supabase Storage
-    const { data, error } = await supabase.storage
+   const { data, error } = await supabaseAdmin.storage
       .from("resumes")
       .upload(uniqueFileName, fileBuffer, {
         contentType:
@@ -39,7 +39,7 @@ export async function uploadResumeFile(
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(uniqueFileName);
+const { data: urlData } = supabaseAdmin.storage.from("resumes").getPublicUrl(uniqueFileName);
     const resumeUrl = urlData.publicUrl;
 
     // Extract text from resume
@@ -130,7 +130,7 @@ export async function createResumeAnalysis(
     };
 
     // Insert into Supabase
-    const { error } = await supabase.from("resume_analyses").insert({
+const { error } = await supabaseAdmin.from("resume_analyses").insert({
       id: analysisId,
       student_id: studentId,
       job_id: jobId || null,
@@ -164,7 +164,7 @@ export async function getResumeAnalysesByStudent(
   studentId: string
 ): Promise<ResumeAnalysis[]> {
   try {
-    const { data, error } = await supabase
+       const { data, error } = await supabaseAdmin
       .from("resume_analyses")
       .select("*")
       .eq("student_id", studentId)
@@ -200,7 +200,7 @@ export async function getResumeAnalysisById(
   analysisId: string
 ): Promise<ResumeAnalysis | null> {
   try {
-    const { data, error } = await supabase
+     const { data, error } = await supabaseAdmin
       .from("resume_analyses")
       .select("*")
       .eq("id", analysisId)
@@ -236,7 +236,7 @@ export async function getLatestResumeAnalysis(
   studentId: string
 ): Promise<ResumeAnalysis | null> {
   try {
-    const { data, error } = await supabase
+   const { data, error } = await supabaseAdmin
       .from("resume_analyses")
       .select("*")
       .eq("student_id", studentId)
@@ -275,7 +275,7 @@ export async function deleteResumeAnalysis(
   analysisId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase
+      const { data, error } = await supabaseAdmin
       .from("resume_analyses")
       .delete()
       .eq("id", analysisId);

@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Mic, Keyboard, Send, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useSessionManager } from "@/lib/sessionManager";
 
 type InterviewMode = "voice" | "text";
 
@@ -36,8 +37,20 @@ export default function MockInterviewSession() {
   const [submitting, setSubmitting] = useState(false);
 
    // Avatar states for Beyond Presence
-  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
-  const [avatarListening, setAvatarListening] = useState(false);
+  // Use unified session manager for video + voice sync
+  const sessionManager = useSessionManager({
+    onSessionStart: () => {
+      console.log("✅ Interview session started - both video and voice ready");
+      toast.success("Interview session active!");
+    },
+    onSessionEnd: () => {
+      console.log("Session ended");
+    },
+    onError: (error) => {
+      console.error("Session error:", error);
+      toast.error(`Session error: ${error.message}`);
+    },
+  });
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -258,23 +271,21 @@ export default function MockInterviewSession() {
                     {/* AI Interviewer Avatar */}
                      {/* Beyond Presence AI Avatar */}
                     <BeyondPresenceAvatar
-                      isSpeaking={avatarSpeaking}
-                      isListening={avatarListening}
+                    isSpeaking={sessionManager.isSpeaking}
+                      isListening={sessionManager.isListening}
                       className="w-full max-w-md"
-                      onReady={() => console.log("Beyond Presence avatar ready")}
-                      onError={(error) => {
-                        console.error("Avatar error:", error);
-                        toast.error("Avatar failed to load. Using fallback.");
-                      }}
+                      // onReady={() => console.log("Beyond Presence avatar ready")}
+                     onReady={sessionManager.onVideoReady}
+                      onError={sessionManager.onVideoError}
                     />
                     <h3 className="text-2xl font-bold text-white" data-testid="ai-interviewer-label">
                       AI Interviewer
                     </h3>
                     <Badge 
                       variant="outline" 
-                      className={`${avatarSpeaking ? 'text-green-400 border-green-400' : 'text-blue-400 border-blue-400'}`}
+                         className={`${sessionManager.isSpeaking ? 'text-green-400 border-green-400' : 'text-blue-400 border-blue-400'}`}
                     >
-                      {avatarSpeaking ? '🟢 Speaking' : '🔴 Live'}
+                      {sessionManager.isSpeaking ? '🟢 Speaking' : sessionManager.isListening ? '🎤 Listening' : '🔴 Live'}
                     </Badge>
                   </div>
                 </CardContent>
@@ -320,8 +331,11 @@ export default function MockInterviewSession() {
                   interviewId={interviewId}
                   applicationId={interview.applicationId}
                   questions={interview.questions}
-                     onSpeakingChange={setAvatarSpeaking}
-                  onListeningChange={setAvatarListening}
+                   onSpeakingChange={sessionManager.onSpeakingChange}
+                  onListeningChange={sessionManager.onListeningChange}
+                  onReady={sessionManager.onVoiceReady}
+                  onError={sessionManager.onVoiceError}
+                  onTranscriptChange={sessionManager.onTranscriptChange}
                 />
               </CardContent>
             </Card>

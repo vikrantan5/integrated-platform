@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
-import { interviewer } from "@/lib/constants"
+import { interviewer } from "@/lib/constants";
 import { createFeedback } from "@/lib/actions/interview.action";
 import { toast } from "sonner";
 
@@ -29,8 +29,11 @@ interface VoiceAgentProps {
   applicationId: string;
   questions: string[];
   onComplete?: () => void;
-    onSpeakingChange?: (isSpeaking: boolean) => void;
+  onSpeakingChange?: (isSpeaking: boolean) => void;
   onListeningChange?: (isListening: boolean) => void;
+  onReady?: () => void;
+  onError?: (error: Error) => void;
+  onTranscriptChange?: (messages: SavedMessage[]) => void;
 }
 
 const VoiceAgent = ({
@@ -40,8 +43,11 @@ const VoiceAgent = ({
   applicationId,
   questions,
   onComplete,
-    onSpeakingChange,
+  onSpeakingChange,
   onListeningChange,
+  onReady,
+  onError,
+  onTranscriptChange,
 }: VoiceAgentProps) => {
   const router = useRouter();
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -49,10 +55,37 @@ const VoiceAgent = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
 
+  // Use refs to store callback props to avoid dependency changes
+  const callbacksRef = useRef({
+    onComplete,
+    onSpeakingChange,
+    onListeningChange,
+    onReady,
+    onError,
+    onTranscriptChange,
+  });
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    callbacksRef.current = {
+      onComplete,
+      onSpeakingChange,
+      onListeningChange,
+      onReady,
+      onError,
+      onTranscriptChange,
+    };
+  }, [onComplete, onSpeakingChange, onListeningChange, onReady, onError, onTranscriptChange]);
+
+  // Stable event handlers that use refs
   useEffect(() => {
     const onCallStart = () => {
       setCallStatus(CallStatus.ACTIVE);
       toast.success("Voice interview started!");
+      // Defer callback to avoid render-phase updates
+      setTimeout(() => {
+        if (callbacksRef.current.onReady) callbacksRef.current.onReady();
+      }, 0);
     };
 
     const onCallEnd = () => {
@@ -63,28 +96,63 @@ const VoiceAgent = ({
     const onMessage = (message: any) => {
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
-        setMessages((prev) => [...prev, newMessage]);
+        
+        // Use functional update for local state
+        setMessages((prev) => {
+          const updated = [...prev, newMessage];
           
-        // Notify listening state when user is speaking
-        if (message.role === "user" && onListeningChange) {
-          onListeningChange(true);
+          // Defer parent callback to avoid render-phase updates
+          setTimeout(() => {
+            if (callbacksRef.current.onTranscriptChange) {
+              callbacksRef.current.onTranscriptChange(updated);
+            }
+          }, 0);
+          
+          return updated;
+        });
+          
+        // Defer listening state callback
+        if (message.role === "user") {
+          setTimeout(() => {
+            if (callbacksRef.current.onListeningChange) {
+              callbacksRef.current.onListeningChange(true);
+            }
+          }, 0);
         }
       }
     };
 
     const onSpeechStart = () => {
       setIsSpeaking(true);
-      if (onSpeakingChange) onSpeakingChange(false);
+      
+      // Defer callbacks to avoid render-phase updates
+      setTimeout(() => {
+        if (callbacksRef.current.onSpeakingChange) {
+          callbacksRef.current.onSpeakingChange(true);
+        }
+        if (callbacksRef.current.onListeningChange) {
+          callbacksRef.current.onListeningChange(false);
+        }
+      }, 0);
     };
 
     const onSpeechEnd = () => {
       setIsSpeaking(false);
-       if (onSpeakingChange) onSpeakingChange(true);
+      
+      setTimeout(() => {
+        if (callbacksRef.current.onSpeakingChange) {
+          callbacksRef.current.onSpeakingChange(false);
+        }
+      }, 0);
     };
 
-    const onError = (error: Error) => {
+    const onVapiError = (error: Error) => {
       console.error("VAPI Error:", error);
       toast.error("Voice interview error. Please try text mode.");
+      
+      setTimeout(() => {
+        if (callbacksRef.current.onError) callbacksRef.current.onError(error);
+      }, 0);
     };
 
     vapi.on("call-start", onCallStart);
@@ -92,7 +160,7 @@ const VoiceAgent = ({
     vapi.on("message", onMessage);
     vapi.on("speech-start", onSpeechStart);
     vapi.on("speech-end", onSpeechEnd);
-    vapi.on("error", onError);
+    vapi.on("error", onVapiError);
 
     return () => {
       vapi.off("call-start", onCallStart);
@@ -100,15 +168,19 @@ const VoiceAgent = ({
       vapi.off("message", onMessage);
       vapi.off("speech-start", onSpeechStart);
       vapi.off("speech-end", onSpeechEnd);
-      vapi.off("error", onError);
+      vapi.off("error", onVapiError);
     };
-  }, []);
+  }, []); // Empty dependency array - run only once on mount
 
+  // Update last message when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setLastMessage(messages[messages.length - 1].content);
     }
+  }, [messages]);
 
+  // Handle feedback generation when call ends
+  useEffect(() => {
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
       try {
         // Convert messages to transcript format
@@ -129,19 +201,23 @@ const VoiceAgent = ({
           router.push(`/interview/${interviewId}/feedback`);
         } else {
           toast.error("Error generating feedback");
-          if (onComplete) onComplete();
+          setTimeout(() => {
+            if (callbacksRef.current.onComplete) callbacksRef.current.onComplete();
+          }, 0);
         }
       } catch (error) {
         console.error("Feedback error:", error);
         toast.error("Error processing interview");
-        if (onComplete) onComplete();
+        setTimeout(() => {
+          if (callbacksRef.current.onComplete) callbacksRef.current.onComplete();
+        }, 0);
       }
     };
 
     if (callStatus === CallStatus.FINISHED && messages.length > 0) {
       handleGenerateFeedback(messages);
     }
-  }, [messages, callStatus, interviewId, applicationId, userId, router, onComplete]);
+  }, [messages, callStatus, interviewId, applicationId, userId, router]);
 
   const handleCall = async () => {
     try {
@@ -150,8 +226,7 @@ const VoiceAgent = ({
       // Format questions for VAPI
       const formattedQuestions = questions
         .map((question, idx) => `${idx + 1}. ${question}`)
-        .join("\n"); // FIXED: Changed from \"
-
+        .join("\n");
 
       await vapi.start(interviewer, {
         variableValues: {
@@ -300,10 +375,10 @@ const VoiceAgent = ({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <p className="font-semibold mb-2">🎤 Voice Interview Instructions:</p>
         <ul className="space-y-1 ml-4 list-disc">
-          <li>Click "Start Voice Interview" to begin</li>
+          <li>Click &quot;Start Voice Interview&quot; to begin</li>
           <li>The AI will ask you questions - answer naturally</li>
           <li>Speak clearly and take your time</li>
-          <li>Click "End Interview" when all questions are answered</li>
+          <li>Click &quot;End Interview&quot; when all questions are answered</li>
           <li>Your responses will be automatically analyzed</li>
         </ul>
       </div>

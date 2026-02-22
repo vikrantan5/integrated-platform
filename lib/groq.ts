@@ -156,24 +156,96 @@ Be thorough and specific. Provide actionable feedback. Consider best practices f
   }
 }
 
+// ============ FIXED PDF EXTRACTION ============
+
 export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
   try {
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(fileBuffer);
+    // Use require with the correct way to call pdf-parse
+    const pdfParse = require('pdf-parse');
+    
+    // pdf-parse exports a function directly, so we need to call it correctly
+    // Some versions export as default, others as a function
+    const parsePDF = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
+    
+    if (!parsePDF) {
+      throw new Error('Could not initialize PDF parser');
+    }
+    
+    const data = await parsePDF(fileBuffer);
+    
+    if (!data.text || data.text.trim().length === 0) {
+      throw new Error("No text content found in PDF");
+    }
+    
     return data.text;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
-    throw new Error("Failed to extract text from PDF");
+    
+    // Provide a more helpful error message
+    if (error instanceof Error && error.message.includes('DOMMatrix')) {
+      throw new Error(
+        "PDF parsing requires additional setup. Please try a different PDF or convert it to text format first."
+      );
+    }
+    
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
+// ============ SIMPLER PDF EXTRACTION USING A DIFFERENT APPROACH ============
+
+// If the above still doesn't work, try this simpler approach with a try-catch wrapper
+export async function extractTextFromPDFSimple(fileBuffer: Buffer): Promise<string> {
+  try {
+    // Dynamically import with the correct pattern
+    const pdfModule = await import('pdf-parse');
+    const parsePDF = pdfModule.default || pdfModule;
+    
+    const data = await parsePDF(fileBuffer);
+    return data.text;
+  } catch (error) {
+    console.error("Simple PDF extraction error:", error);
+    throw error;
+  }
+}
+
+// ============ DOCX EXTRACTION ============
+
 export async function extractTextFromDOCX(fileBuffer: Buffer): Promise<string> {
   try {
-    const mammoth = require("mammoth");
+    // Try dynamic import first
+    try {
+      const mammothModule = await import('mammoth');
+      const mammoth = mammothModule.default || mammothModule;
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      
+      if (result.value && result.value.trim().length > 0) {
+        return result.value;
+      }
+    } catch (importError) {
+      console.warn("Dynamic import failed, trying require:", importError);
+    }
+
+    // Fallback to require
+    const mammoth = require('mammoth');
     const result = await mammoth.extractRawText({ buffer: fileBuffer });
+    
     return result.value;
   } catch (error) {
     console.error("Error extracting text from DOCX:", error);
     throw new Error("Failed to extract text from DOCX");
   }
+}
+
+// ============ ALTERNATIVE: SIMPLE TEXT EXTRACTION ============
+
+// If PDF parsing continues to fail, you can use this simpler function
+// that just returns the buffer as a string (only works for text-based files)
+export function extractTextFromBuffer(fileBuffer: Buffer, mimeType: string): string {
+  // Only for text-based files
+  if (mimeType === 'text/plain' || mimeType === 'text/markdown' || mimeType === 'application/json') {
+    return fileBuffer.toString('utf-8');
+  }
+  
+  throw new Error(`Cannot extract text from ${mimeType} files. Please upload a PDF or DOCX file.`);
 }
