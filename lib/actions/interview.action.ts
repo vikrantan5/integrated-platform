@@ -1,3 +1,5 @@
+// lib/actions/interview.action.ts
+
 "use server";
 
 import { adminDb } from "@/lib/firebase/admin";
@@ -91,6 +93,40 @@ export async function finalizeInterview(
   }
 }
 
+// ============ HELPER FUNCTION TO NORMALIZE CATEGORY SCORES ============
+
+function normalizeCategoryScores(categoryScores: any): Array<{ name: string; score: number; comment: string }> {
+  // If it's already an array, ensure each item has the correct structure
+  if (Array.isArray(categoryScores)) {
+    return categoryScores.map(cat => ({
+      name: cat.name || cat.category || "Unknown Category",
+      score: cat.score || 0,
+      comment: cat.comment || cat.feedback || ""
+    }));
+  }
+  
+  // If it's an object with named properties (from AI)
+  if (categoryScores && typeof categoryScores === 'object') {
+    // Map the expected category names to display names
+    const categoryMap = [
+      { key: 'communicationSkills', name: 'Communication Skills' },
+      { key: 'technicalKnowledge', name: 'Technical Knowledge' },
+      { key: 'problemSolving', name: 'Problem Solving' },
+      { key: 'culturalFit', name: 'Cultural Fit' },
+      { key: 'confidenceClarity', name: 'Confidence & Clarity' }
+    ];
+
+    return categoryMap.map(({ key, name }) => ({
+      name,
+      score: categoryScores[key] || 0,
+      comment: categoryScores[`${key}Comment`] || categoryScores[`${key}Feedback`] || ""
+    }));
+  }
+  
+  // Return empty array as fallback
+  return [];
+}
+
 // ============ FEEDBACK ACTIONS ============
 
 export async function createFeedback(
@@ -112,6 +148,9 @@ export async function createFeedback(
       transcript,
     });
 
+    // Normalize categoryScores to ensure it's an array with the correct structure
+    const normalizedCategoryScores = normalizeCategoryScores(aiAnalysis.categoryScores);
+
     const feedbackId = existingFeedbackId || generateId();
     const feedback: Feedback = {
       id: feedbackId,
@@ -119,10 +158,10 @@ export async function createFeedback(
       applicationId,
       userId,
       totalScore: aiAnalysis.totalScore,
-      categoryScores: aiAnalysis.categoryScores,
-      strengths: aiAnalysis.strengths,
-      areasForImprovement: aiAnalysis.areasForImprovement,
-      finalAssessment: aiAnalysis.finalAssessment,
+      categoryScores: normalizedCategoryScores, // Now it's always an array
+      strengths: Array.isArray(aiAnalysis.strengths) ? aiAnalysis.strengths : [],
+      areasForImprovement: Array.isArray(aiAnalysis.areasForImprovement) ? aiAnalysis.areasForImprovement : [],
+      finalAssessment: aiAnalysis.finalAssessment || "",
       transcript,
       createdAt: new Date().toISOString(),
     };
@@ -151,7 +190,14 @@ export async function getFeedbackByInterviewId(interviewId: string): Promise<Fee
       return null;
     }
 
-    return snapshot.docs[0].data() as Feedback;
+    const data = snapshot.docs[0].data() as Feedback;
+    
+    // Ensure the data structure is correct when reading from Firestore
+    if (data && !Array.isArray(data.categoryScores)) {
+      data.categoryScores = normalizeCategoryScores(data.categoryScores);
+    }
+    
+    return data;
   } catch (error) {
     console.error("Get feedback error:", error);
     return null;
@@ -170,7 +216,14 @@ export async function getFeedbackByApplicationId(applicationId: string): Promise
       return null;
     }
 
-    return snapshot.docs[0].data() as Feedback;
+    const data = snapshot.docs[0].data() as Feedback;
+    
+    // Ensure the data structure is correct when reading from Firestore
+    if (data && !Array.isArray(data.categoryScores)) {
+      data.categoryScores = normalizeCategoryScores(data.categoryScores);
+    }
+    
+    return data;
   } catch (error) {
     console.error("Get feedback by application error:", error);
     return null;
@@ -185,7 +238,18 @@ export async function getFeedbacksByUser(userId: string): Promise<Feedback[]> {
       .orderBy("createdAt", "desc")
       .get();
 
-    return snapshot.docs.map((doc) => doc.data() as Feedback);
+    const feedbacks = snapshot.docs.map((doc) => {
+      const data = doc.data() as Feedback;
+      
+      // Ensure the data structure is correct when reading from Firestore
+      if (data && !Array.isArray(data.categoryScores)) {
+        data.categoryScores = normalizeCategoryScores(data.categoryScores);
+      }
+      
+      return data;
+    });
+    
+    return feedbacks;
   } catch (error) {
     console.error("Get user feedbacks error:", error);
     return [];

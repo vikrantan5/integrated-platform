@@ -163,15 +163,8 @@ export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
     // Use require with the correct way to call pdf-parse
     const pdfParse = require('pdf-parse');
     
-    // pdf-parse exports a function directly, so we need to call it correctly
-    // Some versions export as default, others as a function
-    const parsePDF = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
-    
-    if (!parsePDF) {
-      throw new Error('Could not initialize PDF parser');
-    }
-    
-    const data = await parsePDF(fileBuffer);
+    // pdf-parse exports a function directly
+    const data = await pdfParse(fileBuffer);
     
     if (!data.text || data.text.trim().length === 0) {
       throw new Error("No text content found in PDF");
@@ -192,16 +185,13 @@ export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
   }
 }
 
-// ============ SIMPLER PDF EXTRACTION USING A DIFFERENT APPROACH ============
+// ============ ALTERNATIVE PDF EXTRACTION WITH DYNAMIC IMPORT ============
 
-// If the above still doesn't work, try this simpler approach with a try-catch wrapper
 export async function extractTextFromPDFSimple(fileBuffer: Buffer): Promise<string> {
   try {
-    // Dynamically import with the correct pattern
-    const pdfModule = await import('pdf-parse');
-    const parsePDF = pdfModule.default || pdfModule;
-    
-    const data = await parsePDF(fileBuffer);
+    // Use require instead of dynamic import for better compatibility
+    const pdfParse = require('pdf-parse');
+    const data = await pdfParse(fileBuffer);
     return data.text;
   } catch (error) {
     console.error("Simple PDF extraction error:", error);
