@@ -9,70 +9,143 @@ import {
   extractTextFromDOCX,
 } from "@/lib/groq";
 
-// ============ RESUME UPLOAD & PARSING (SUPABASE) ============
+/* ============================================================
+   RESUME UPLOAD & PARSING (SUPABASE)
+============================================================ */
 
 export async function uploadResumeFile(
   fileBuffer: Buffer,
   fileName: string,
   userId: string
-): Promise<{ success: boolean; resumeUrl?: string; resumeText?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  resumeUrl?: string;
+  resumeText?: string;
+  error?: string;
+}> {
   try {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const fileExtension = fileName.split(".").pop()?.toLowerCase();
-    const uniqueFileName = `${userId}/${timestamp}-${fileName}`;
+    /* ---------- SAFETY CHECKS ---------- */
 
-    // Upload file to Supabase Storage
-   const { data, error } = await supabaseAdmin.storage
+    if (!fileBuffer || fileBuffer.length === 0) {
+      console.error("❌ Empty file buffer received");
+      return { success: false, error: "Uploaded file is empty" };
+    }
+
+    if (!fileName) {
+      return { success: false, error: "Invalid file name" };
+    }
+
+    const fileExtension = fileName.split(".").pop()?.toLowerCase();
+
+    if (!fileExtension || !["pdf", "docx"].includes(fileExtension)) {
+      return {
+        success: false,
+        error: "Unsupported file format. Upload PDF or DOCX only.",
+      };
+    }
+
+    console.log("📄 Uploading:", fileName);
+    console.log("📦 Buffer size:", fileBuffer.length);
+
+    /* ---------- UNIQUE FILE NAME ---------- */
+
+    const safeFileName = fileName.replace(/\s+/g, "_");
+    const uniqueFileName = `${userId}/${Date.now()}-${safeFileName}`;
+
+    /* ---------- CONTENT TYPE ---------- */
+
+    const contentType =
+      fileExtension === "pdf"
+        ? "application/pdf"
+        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+    /* ---------- UPLOAD TO SUPABASE ---------- */
+
+    const { error: uploadError } = await supabaseAdmin.storage
       .from("resumes")
       .upload(uniqueFileName, fileBuffer, {
-        contentType:
-          fileExtension === "pdf"
-            ? "application/pdf"
-            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        contentType,
         upsert: false,
       });
 
-    if (error) {
-      console.error("Supabase upload error:", error);
-      return { success: false, error: error.message };
+    if (uploadError) {
+      console.error("❌ Supabase upload error:", uploadError);
+      return { success: false, error: uploadError.message };
     }
 
-    // Get public URL
-const { data: urlData } = supabaseAdmin.storage.from("resumes").getPublicUrl(uniqueFileName);
+    /* ---------- GET PUBLIC URL ---------- */
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from("resumes")
+      .getPublicUrl(uniqueFileName);
+
     const resumeUrl = urlData.publicUrl;
 
-    // Extract text from resume
+    /* ---------- TEXT EXTRACTION ---------- */
+
     let resumeText = "";
-    if (fileExtension === "pdf") {
-      resumeText = await extractTextFromPDF(fileBuffer);
-    } else if (fileExtension === "docx") {
-      resumeText = await extractTextFromDOCX(fileBuffer);
-    } else {
-      return { success: false, error: "Unsupported file format. Please upload PDF or DOCX." };
+
+    try {
+      if (fileExtension === "pdf") {
+        resumeText = await extractTextFromPDF(fileBuffer);
+      } else {
+        resumeText = await extractTextFromDOCX(fileBuffer);
+      }
+    } catch (parseError: any) {
+      console.error("❌ Resume parsing failed:", parseError);
+      return {
+        success: false,
+        error:
+          "Could not extract text from file. Ensure it contains selectable text (not scanned image).",
+      };
+    }
+
+    if (!resumeText || resumeText.trim().length === 0) {
+      return {
+        success: false,
+        error: "No readable text found in resume",
+      };
     }
 
     return { success: true, resumeUrl, resumeText };
   } catch (error: any) {
-    console.error("Upload resume error:", error);
-    return { success: false, error: error.message || "Failed to upload resume" };
+    console.error("❌ Upload resume error:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to upload resume",
+    };
   }
 }
 
-// ============ RESUME ANALYSIS (SUPABASE) ============
+/* ============================================================
+   RESUME ANALYSIS (SUPABASE)
+============================================================ */
 
 export async function createResumeAnalysis(
   params: CreateResumeAnalysisParams
-): Promise<{ success: boolean; analysisId?: string; analysis?: ResumeAnalysis; error?: string }> {
+): Promise<{
+  success: boolean;
+  analysisId?: string;
+  analysis?: ResumeAnalysis;
+  error?: string;
+}> {
   try {
-    const { studentId, jobId, fileName, resumeUrl, resumeText, jobDescription } = params;
+    const {
+      studentId,
+      jobId,
+      fileName,
+      resumeUrl,
+      resumeText,
+      jobDescription,
+    } = params;
 
-    // Analyze resume with AI
-    const aiAnalysis = await analyzeResumeWithAI(resumeText, jobDescription);
+    const aiAnalysis = await analyzeResumeWithAI(
+      resumeText,
+      jobDescription
+    );
 
+    /* ---------- CATEGORY SCORE MAPPING ---------- */
 
-    
-       // Convert array categoryScores to object format
     const categoryScoresObj = {
       experience: 0,
       education: 0,
@@ -81,38 +154,40 @@ export async function createResumeAnalysis(
       formatting: 0,
     };
 
-    // Map category scores from array to object
     aiAnalysis.categoryScores.forEach((cat) => {
-      const categoryKey = cat.category.toLowerCase().replace(/[^a-z]/g, '');
-      if (categoryKey.includes('format') || categoryKey.includes('structure')) {
+      const key = cat.category.toLowerCase().replace(/[^a-z]/g, "");
+
+      if (key.includes("format") || key.includes("structure"))
         categoryScoresObj.formatting = cat.score;
-      } else if (categoryKey.includes('experience')) {
+      else if (key.includes("experience"))
         categoryScoresObj.experience = cat.score;
-      } else if (categoryKey.includes('education')) {
+      else if (key.includes("education"))
         categoryScoresObj.education = cat.score;
-      } else if (categoryKey.includes('skill')) {
+      else if (key.includes("skill"))
         categoryScoresObj.skills = cat.score;
-      } else if (categoryKey.includes('keyword')) {
+      else if (key.includes("keyword"))
         categoryScoresObj.keywords = cat.score;
-      }
     });
 
-    // Convert atsCompatibility string to number
-    const atsCompatibilityMap = {
-      "Excellent": 90,
-      "Good": 75,
-      "Fair": 50,
-      "Poor": 30,
-    };
-    const atsCompatibilityNumber = atsCompatibilityMap[aiAnalysis.atsCompatibility] || 50;
+    /* ---------- ATS SCORE ---------- */
 
-    // Convert keywords format
+    const atsCompatibilityMap: Record<string, number> = {
+      Excellent: 90,
+      Good: 75,
+      Fair: 50,
+      Poor: 30,
+    };
+
+    const atsCompatibilityNumber =
+      atsCompatibilityMap[aiAnalysis.atsCompatibility] || 50;
+
     const keywordsObj = {
       matched: aiAnalysis.keywords.found || [],
       missing: aiAnalysis.keywords.missing || [],
     };
 
     const analysisId = generateId();
+
     const analysis: ResumeAnalysis = {
       id: analysisId,
       studentId,
@@ -120,7 +195,6 @@ export async function createResumeAnalysis(
       fileName,
       resumeUrl,
       overallScore: aiAnalysis.overallScore,
-      // categoryScores: aiAnalysis.categoryScores,
       categoryScores: categoryScoresObj,
       strengths: aiAnalysis.strengths,
       improvements: aiAnalysis.improvements,
@@ -129,15 +203,15 @@ export async function createResumeAnalysis(
       createdAt: new Date().toISOString(),
     };
 
-    // Insert into Supabase
-const { error } = await supabaseAdmin.from("resume_analyses").insert({
+    /* ---------- SAVE TO DB ---------- */
+
+    const { error } = await supabaseAdmin.from("resume_analyses").insert({
       id: analysisId,
       student_id: studentId,
       job_id: jobId || null,
       file_name: fileName,
       resume_url: resumeUrl,
       overall_score: aiAnalysis.overallScore,
-      // category_scores: aiAnalysis.categoryScores,
       category_scores: categoryScoresObj,
       strengths: aiAnalysis.strengths,
       improvements: aiAnalysis.improvements,
@@ -147,35 +221,39 @@ const { error } = await supabaseAdmin.from("resume_analyses").insert({
     });
 
     if (error) {
-      console.error("Supabase insert error:", error);
+      console.error("❌ Supabase insert error:", error);
       return { success: false, error: error.message };
     }
 
     return { success: true, analysisId, analysis };
   } catch (error: any) {
-    console.error("Create resume analysis error:", error);
-    return { success: false, error: error.message || "Failed to analyze resume" };
+    console.error("❌ Create resume analysis error:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to analyze resume",
+    };
   }
 }
 
-// ============ GET RESUME ANALYSES (SUPABASE) ============
+/* ============================================================
+   FETCH ANALYSES
+============================================================ */
 
 export async function getResumeAnalysesByStudent(
   studentId: string
 ): Promise<ResumeAnalysis[]> {
   try {
-       const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("resume_analyses")
       .select("*")
       .eq("student_id", studentId)
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Get resume analyses error:", error);
+      console.error("❌ Get analyses error:", error);
       return [];
     }
 
-    // Transform snake_case to camelCase
     return (data || []).map((row: any) => ({
       id: row.id,
       studentId: row.student_id,
@@ -191,103 +269,32 @@ export async function getResumeAnalysesByStudent(
       createdAt: row.created_at,
     }));
   } catch (error) {
-    console.error("Get resume analyses error:", error);
+    console.error("❌ Get analyses error:", error);
     return [];
   }
 }
 
-export async function getResumeAnalysisById(
-  analysisId: string
-): Promise<ResumeAnalysis | null> {
-  try {
-     const { data, error } = await supabaseAdmin
-      .from("resume_analyses")
-      .select("*")
-      .eq("id", analysisId)
-      .single();
-
-    if (error || !data) {
-      console.error("Get resume analysis error:", error);
-      return null;
-    }
-
-    // Transform snake_case to camelCase
-    return {
-      id: data.id,
-      studentId: data.student_id,
-      jobId: data.job_id,
-      fileName: data.file_name,
-      resumeUrl: data.resume_url,
-      overallScore: data.overall_score,
-      categoryScores: data.category_scores,
-      strengths: data.strengths,
-      improvements: data.improvements,
-      keywords: data.keywords,
-      atsCompatibility: data.ats_compatibility,
-      createdAt: data.created_at,
-    };
-  } catch (error) {
-    console.error("Get resume analysis error:", error);
-    return null;
-  }
-}
-
-export async function getLatestResumeAnalysis(
-  studentId: string
-): Promise<ResumeAnalysis | null> {
-  try {
-   const { data, error } = await supabaseAdmin
-      .from("resume_analyses")
-      .select("*")
-      .eq("student_id", studentId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error || !data) {
-      return null;
-    }
-
-    // Transform snake_case to camelCase
-    return {
-      id: data.id,
-      studentId: data.student_id,
-      jobId: data.job_id,
-      fileName: data.file_name,
-      resumeUrl: data.resume_url,
-      overallScore: data.overall_score,
-      categoryScores: data.category_scores,
-      strengths: data.strengths,
-      improvements: data.improvements,
-      keywords: data.keywords,
-      atsCompatibility: data.ats_compatibility,
-      createdAt: data.created_at,
-    };
-  } catch (error) {
-    console.error("Get latest resume analysis error:", error);
-    return null;
-  }
-}
-
-// ============ DELETE RESUME ANALYSIS (SUPABASE) ============
+/* ============================================================
+   DELETE
+============================================================ */
 
 export async function deleteResumeAnalysis(
   analysisId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-      const { data, error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("resume_analyses")
       .delete()
       .eq("id", analysisId);
 
     if (error) {
-      console.error("Delete resume analysis error:", error);
+      console.error("❌ Delete error:", error);
       return { success: false, error: error.message };
     }
 
     return { success: true };
   } catch (error: any) {
-    console.error("Delete resume analysis error:", error);
+    console.error("❌ Delete error:", error);
     return { success: false, error: error.message };
   }
 }

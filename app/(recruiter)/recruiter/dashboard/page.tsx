@@ -58,17 +58,17 @@ export default function RecruiterDashboard() {
     setLoading(false);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+    return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900" data-testid="page-title">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent" data-testid="page-title">
               Recruiter Dashboard
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-400 mt-2">
               Manage your jobs, companies, and view applicant analytics
             </p>
           </div>
@@ -76,76 +76,80 @@ export default function RecruiterDashboard() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
           </div>
         ) : (
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card>
+              <Card className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 border-gray-700/50 backdrop-blur-sm hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-300">Total Jobs</CardTitle>
+                  <Briefcase className="h-4 w-4 text-blue-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="total-jobs">{stats.totalJobs}</div>
+                  <div className="text-3xl font-bold text-white" data-testid="total-jobs">{stats.totalJobs}</div>
+                  <p className="text-xs text-gray-500 mt-1">All positions</p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 border-gray-700/50 backdrop-blur-sm hover:shadow-lg hover:shadow-green-500/20 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Open Jobs</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <CardTitle className="text-sm font-medium text-gray-300">Open Jobs</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600" data-testid="open-jobs">{stats.openJobs}</div>
+                  <div className="text-3xl font-bold text-green-400" data-testid="open-jobs">{stats.openJobs}</div>
+                  <p className="text-xs text-gray-500 mt-1">Currently hiring</p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 border-gray-700/50 backdrop-blur-sm hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Companies</CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-300">Companies</CardTitle>
+                  <Building2 className="h-4 w-4 text-purple-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold" data-testid="total-companies">{stats.companies}</div>
+                  <div className="text-3xl font-bold text-purple-400" data-testid="total-companies">{stats.companies}</div>
+                  <p className="text-xs text-gray-500 mt-1">Organizations</p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 border-gray-700/50 backdrop-blur-sm hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Applications</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-300">Applications</CardTitle>
+                  <Users className="h-4 w-4 text-yellow-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalApplications}</div>
+                  <div className="text-3xl font-bold text-yellow-400">{stats.totalApplications}</div>
+                  <p className="text-xs text-gray-500 mt-1">Total candidates</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Quick Actions */}
-            <Card>
+            <Card className="mb-6 bg-gray-800/90 border-gray-700/50 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="text-gray-200">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Link href="/recruiter/jobs/new" className="block">
-                    <Button className="w-full gap-2" data-testid="post-job-button">
+                    <Button className="w-full gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg shadow-blue-500/30" data-testid="post-job-button">
                       <Plus className="h-4 w-4" />
                       Post New Job
                     </Button>
                   </Link>
 
                   <Link href="/recruiter/companies" className="block">
-                    <Button variant="outline" className="w-full gap-2" data-testid="manage-companies-button">
+                    <Button className="w-full gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold shadow-lg shadow-purple-500/30" data-testid="manage-companies-button">
                       <Building2 className="h-4 w-4" />
                       Manage Companies
                     </Button>
                   </Link>
 
                   <Link href="/recruiter/jobs" className="block">
-                    <Button variant="outline" className="w-full gap-2" data-testid="view-jobs-button">
+                    <Button className="w-full gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold shadow-lg shadow-green-500/30" data-testid="view-jobs-button">
                       <Briefcase className="h-4 w-4" />
                       View All Jobs
                     </Button>
@@ -156,19 +160,25 @@ export default function RecruiterDashboard() {
 
             {/* Getting Started */}
             {stats.totalJobs === 0 && (
-              <Card className="mt-6 bg-blue-50 border-blue-200">
+              <Card className="mt-6 bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border-blue-500/30 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-blue-900">🚀 Getting Started</CardTitle>
+                  <CardTitle className="text-blue-300 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    Getting Started
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="text-blue-800">
-                  <ol className="list-decimal list-inside space-y-2">
+                <CardContent className="text-gray-300">
+                  <ol className="list-decimal list-inside space-y-2 mb-4">
                     <li>Create a company profile</li>
                     <li>Post your first job with tech stack requirements</li>
                     <li>AI will generate tailored interview questions for applicants</li>
                     <li>Review applications with AI interview scores and feedback</li>
                   </ol>
                   <Link href="/recruiter/companies">
-                    <Button className="mt-4">Create Company</Button>
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30">
+                      <Building2 className="h-4 w-4 mr-2" />
+                      Create Company
+                    </Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -178,4 +188,5 @@ export default function RecruiterDashboard() {
       </div>
     </div>
   );
+
 }

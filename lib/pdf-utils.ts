@@ -52,3 +52,9 @@ export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
     throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
+
+
+
+
+
+// PDF parsing requires additional setup. Please try a different PDF or convert it to text format first.
