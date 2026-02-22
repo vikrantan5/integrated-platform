@@ -158,6 +158,18 @@ ${jobDescription}${roleContext}
    - Suggest better action verbs
    - Identify vague descriptions that need strengthening
 
+**⚠️ CRITICAL: KEYWORD EXTRACTION IS MANDATORY ⚠️**
+You MUST populate the "keywords" field with:
+- **found**: Extract at least 5-10 specific keywords/skills/technologies that appear in the resume (e.g., "JavaScript", "Project Management", "Python", "React", "AWS", "Agile", "Leadership")
+- **missing**: If job description is provided, identify at least 5-8 critical keywords from the job description that are NOT in the resume. If no job description, identify industry-standard keywords for the role that are missing.
+
+The "Keywords" category score (0-100) should be calculated based on:
+- 0-20: Very few relevant keywords found
+- 21-40: Some keywords but missing many critical ones
+- 41-60: Average keyword optimization
+- 61-80: Good keyword coverage
+- 81-100: Excellent keyword optimization with all critical terms present
+
 Provide a comprehensive analysis in the following JSON format:
 
 {
@@ -179,9 +191,9 @@ Provide a comprehensive analysis in the following JSON format:
       "feedback": "<detailed analysis of technical and soft skills, with gap analysis>"
     },
     {
-      "category": "Content Quality",
+      "category": "Keywords & ATS Optimization",
       "score": <number 0-100>,
-      "feedback": "<feedback on achievement descriptions, action verbs, quantifiable results>"
+      "feedback": "<detailed feedback about keyword usage. MUST mention specific keywords found and missing. Explain how keywords affect ATS scoring>"
     },
     {
       "category": "Format & ATS Compatibility",
@@ -189,11 +201,11 @@ Provide a comprehensive analysis in the following JSON format:
       "feedback": "<detailed feedback about formatting, structure, and ATS optimization>"
     }
   ],
-  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
-  "improvements": ["specific improvement 1", "specific improvement 2", "specific improvement 3"],
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3", "specific strength 4", "specific strength 5"],
+  "improvements": ["specific improvement 1", "specific improvement 2", "specific improvement 3", "specific improvement 4", "specific improvement 5"],
   "keywords": {
-    "found": ["keyword1", "keyword2"],
-    "missing": ["critical missing keyword 1", "critical missing keyword 2"]
+    "found": ["JavaScript", "React", "Node.js", "Python", "AWS", "MongoDB", "Git", "Agile", "Leadership", "Communication"], // EXAMPLE - REPLACE WITH ACTUAL EXTRACTED KEYWORDS
+    "missing": ["Docker", "Kubernetes", "TypeScript", "GraphQL", "CI/CD", "Terraform", "Microservices"] // EXAMPLE - REPLACE WITH ACTUAL MISSING KEYWORDS
   },
   "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor",
   "recommendedSkills": [
@@ -225,6 +237,7 @@ Provide a comprehensive analysis in the following JSON format:
 - Highlight any red flags or major issues
 - Consider industry standards and current hiring trends
 - Provide realistic expectations based on experience level
+- **KEYWORD SECTION MUST BE POPULATED** - Do not leave empty arrays. Always include at least 5 found keywords and 5 missing keywords when applicable.
 
 Be thorough and specific. This analysis will be used by job seekers to improve their resumes.`
       : `You are an expert ATS (Applicant Tracking System) resume analyzer and career coach. Analyze the following resume${roleContext ? ` for a ${jobRole} position in ${jobCategory}` : ' for general job applications'}.
@@ -259,6 +272,11 @@ ${resumeText}${roleContext}
    - Structure improvements
    - Length optimization
 
+**⚠️ CRITICAL: KEYWORD EXTRACTION IS MANDATORY ⚠️**
+You MUST populate the "keywords" field with:
+- **found**: Extract at least 5-10 specific keywords/skills/technologies that appear in the resume (e.g., "JavaScript", "Project Management", "Python")
+- **missing**: Based on the target role/industry, identify at least 5-8 critical keywords that are NOT in the resume
+
 Provide a comprehensive analysis in the following JSON format:
 
 {
@@ -280,9 +298,9 @@ Provide a comprehensive analysis in the following JSON format:
       "feedback": "<detailed analysis with missing skills identified>"
     },
     {
-      "category": "Content & Achievements",
+      "category": "Keywords & ATS Optimization",
       "score": <number 0-100>,
-      "feedback": "<feedback on achievement descriptions and action verbs>"
+      "feedback": "<detailed feedback about keyword usage. MUST list specific keywords found and missing>"
     },
     {
       "category": "Formatting",
@@ -290,11 +308,11 @@ Provide a comprehensive analysis in the following JSON format:
       "feedback": "<detailed feedback about format and ATS compatibility>"
     }
   ],
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
+  "strengths": ["strength 1", "strength 2", "strength 3", "strength 4", "strength 5"],
+  "improvements": ["improvement 1", "improvement 2", "improvement 3", "improvement 4", "improvement 5"],
   "keywords": {
-    "found": ["keyword1", "keyword2"],
-    "missing": ["missing1", "missing2"]
+    "found": ["JavaScript", "React", "Python", "Project Management", "Leadership", "AWS", "Git"], // EXAMPLE - REPLACE WITH ACTUAL EXTRACTED KEYWORDS
+    "missing": ["Docker", "TypeScript", "GraphQL", "CI/CD", "Terraform", "Agile", "Microservices"] // EXAMPLE - REPLACE WITH ACTUAL MISSING KEYWORDS
   },
   "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor",
   "recommendedSkills": [
@@ -318,13 +336,19 @@ Provide a comprehensive analysis in the following JSON format:
   "validationMessage": ""
 }
 
-Be thorough and specific. Provide actionable feedback that helps the candidate immediately improve their resume.`
+**IMPORTANT GUIDELINES:**
+- Be thorough and specific
+- **KEYWORD SECTION MUST BE POPULATED** - Do not leave empty arrays
+- Always include multiple keywords in both found and missing arrays
+- The more specific the keywords, the better
+
+Provide actionable feedback that helps the candidate immediately improve their resume.`
 
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: "You are an expert ATS resume analyzer and career coach. Always respond with valid JSON only, no additional text or markdown formatting. Your feedback should be specific, actionable, and helpful for job seekers.",
+          content: "You are an expert ATS resume analyzer and career coach. Always respond with valid JSON only, no additional text or markdown formatting. Your feedback should be specific, actionable, and helpful for job seekers. CRITICAL: You MUST populate the keywords.found and keywords.missing arrays with actual keywords - never leave them empty.",
         },
         {
           role: "user",
@@ -340,13 +364,16 @@ Be thorough and specific. Provide actionable feedback that helps the candidate i
     const responseText = completion.choices[0]?.message?.content || "{}";
     const analysis: ResumeAnalysisResult = JSON.parse(responseText);
 
-    // Validate and ensure all fields exist
+    // Validate and ensure all fields exist with proper defaults
     return {
       overallScore: analysis.overallScore || 0,
       categoryScores: analysis.categoryScores || [],
       strengths: analysis.strengths || [],
       improvements: analysis.improvements || [],
-      keywords: analysis.keywords || { found: [], missing: [] },
+      keywords: {
+        found: analysis.keywords?.found?.length ? analysis.keywords.found : ["No keywords detected - analysis issue"],
+        missing: analysis.keywords?.missing?.length ? analysis.keywords.missing : ["Unable to identify missing keywords"],
+      },
       atsCompatibility: analysis.atsCompatibility || "Fair",
       recommendedSkills: analysis.recommendedSkills || [],
       contentSuggestions: analysis.contentSuggestions || [],
@@ -363,7 +390,10 @@ Be thorough and specific. Provide actionable feedback that helps the candidate i
       categoryScores: [],
       strengths: [],
       improvements: ["Unable to analyze resume due to a technical error. Please try again."],
-      keywords: { found: [], missing: [] },
+      keywords: { 
+        found: ["Error in analysis"], 
+        missing: ["Please try again"] 
+      },
       atsCompatibility: "Poor",
       recommendedSkills: [],
       contentSuggestions: [],
