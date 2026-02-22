@@ -22,9 +22,18 @@ export interface ResumeAnalysisResult {
 
 export async function analyzeResumeWithAI(
   resumeText: string,
-  jobDescription?: string
+  jobDescription?: string,
+  jobCategory?: string,
+  jobRole?: string
 ): Promise<ResumeAnalysisResult> {
   try {
+      // Build role-specific context
+    const roleContext = jobCategory && jobRole
+      ? `
+**Target Role:** ${jobRole} in ${jobCategory}
+Analyze this resume specifically for the ${jobRole} position in the ${jobCategory} field. Focus on relevant skills, experience, and education for this specific role.`
+      : "";
+
     const prompt = jobDescription
       ? `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume against the job description and provide detailed feedback.
 
@@ -32,36 +41,46 @@ export async function analyzeResumeWithAI(
 ${resumeText}
 
 **Job Description:**
-${jobDescription}
+${jobDescription}${roleContext}
+
+**CRITICAL: Education Extraction**
+You MUST carefully extract and analyze education information from the resume. Look for:
+- Degree/Diploma names (Bachelor's, Master's, PhD, etc.)
+- Institution/University/College names
+- Graduation years or date ranges
+- Field of study/Major
+- GPA or grades if mentioned
+If education section is missing or unclear, note this in the feedback.
+
 
 Provide a comprehensive analysis in the following JSON format:
 {
   "overallScore": <number 0-100>,
-  "categoryScores": [
-    {
-      "category": "Format & Structure",
-      "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
-    },
-    {
-      "category": "Keyword Optimization",
-      "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
-    },
+    "categoryScores": [
     {
       "category": "Experience Description",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about work experience, achievements, and relevance>"
+    },
+    {
+      "category": "Education",
+      "score": <number 0-100>,
+      "feedback": "<detailed feedback about education - degree, institution, relevance to role. MUST mention specific degrees and universities found>"
     },
     {
       "category": "Skills Relevance",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about technical and soft skills>"
     },
     {
-      "category": "ATS Compatibility",
+      "category": "Keyword Optimization",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about keyword usage and ATS optimization>"
+    },
+    {
+      "category": "Format & Structure",
+      "score": <number 0-100>,
+      "feedback": "<detailed feedback about resume formatting and structure>"
     }
   ],
   "strengths": ["strength 1", "strength 2", "strength 3"],
@@ -74,39 +93,48 @@ Provide a comprehensive analysis in the following JSON format:
 }
 
 Be thorough and specific. Provide actionable feedback.`
-      : `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume and provide detailed feedback for general job applications.
+      : `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume${roleContext ? ` for a ${jobRole} position in ${jobCategory}` : ' for general job applications'}.
 
 **Resume:**
-${resumeText}
+${resumeText}${roleContext}
+
+**CRITICAL: Education Extraction**
+You MUST carefully extract and analyze education information from the resume. Look for:
+- Degree/Diploma names (Bachelor's, Master's, PhD, etc.)
+- Institution/University/College names
+- Graduation years or date ranges
+- Field of study/Major
+- GPA or grades if mentioned
+If education section is missing or unclear, note this in the feedback.
 
 Provide a comprehensive analysis in the following JSON format:
 {
   "overallScore": <number 0-100>,
   "categoryScores": [
     {
-      "category": "Format & Structure",
+      "category": "Experience",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about work experience, achievements, relevance>"
     },
     {
-      "category": "Keyword Optimization",
+      "category": "Education",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<MUST extract and mention: degree name, institution, graduation year if found. Comment on education relevance to the role>"
     },
     {
-      "category": "Experience Description",
+      "category": "Skills",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about technical and soft skills>"
     },
     {
-      "category": "Skills Relevance",
+      "category": "Keywords",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about keyword optimization>"
     },
     {
-      "category": "ATS Compatibility",
+      "category": "Formatting",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback>"
+      "feedback": "<detailed feedback about format and ATS compatibility>"
     }
   ],
   "strengths": ["strength 1", "strength 2", "strength 3"],

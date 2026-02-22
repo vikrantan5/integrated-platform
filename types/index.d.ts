@@ -161,5 +161,42 @@ export interface CreateResumeAnalysisParams {
   resumeUrl: string;
   resumeText: string;
   jobDescription: string;
+  jobCategory?: string;
+  jobRole?: string;
 }
 
+// Subscription types
+export interface Subscription {
+  id: string;
+  userId: string;
+  planType: "monthly" | "yearly";
+  status: "active" | "expired" | "cancelled";
+  startDate: string;
+  endDate: string;
+  paymentId?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  amount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InterviewUsage {
+  id: string;
+  userId: string;
+  interviewCount: number;
+  freeTrialUsed: boolean;
+  lastInterviewDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSubscriptionParams {
+  userId: string;
+  planType: "monthly" | "yearly";
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  amount: number;
+}

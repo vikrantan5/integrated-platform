@@ -11,10 +11,12 @@ import {
   Briefcase,
   Building2,
   LogOut,
-  User,
   FileText,
   Home,
-   FileCheck,
+  FileCheck,
+  MessageSquare,
+  Menu,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +24,7 @@ export default function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -47,6 +50,10 @@ export default function Navbar() {
     }
   };
 
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
   if (loading) {
     return (
       <nav className="border-b bg-white shadow-sm">
@@ -70,29 +77,133 @@ export default function Navbar() {
           </Link>
 
           {user && (
-            <div className="flex items-center gap-4">
+            <>
+              {/* Desktop Menu */}
+              <div className="hidden lg:flex items-center gap-4">
+                {user.role === "jobseeker" ? (
+                  <>
+                    <Link href="/jobseeker/jobs">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        Browse Jobs
+                      </Button>
+                    </Link>
+                    <Link href="/jobseeker/applications">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        My Applications
+                      </Button>
+                    </Link>
+                    <Link href="/jobseeker/resume">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <FileCheck className="h-4 w-4" />
+                        Resume Analyzer
+                      </Button>
+                    </Link>
+                    <Link href="/mock-interview/setup">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        AI Mock Interview
+                      </Button>
+                    </Link>
+                    <Link href="/jobseeker/dashboard">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Home className="h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/recruiter/dashboard">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Home className="h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Link href="/recruiter/companies">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Companies
+                      </Button>
+                    </Link>
+                    <Link href="/recruiter/jobs">
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        Jobs
+                      </Button>
+                    </Link>
+                  </>
+                )}
+
+                <div className="flex items-center gap-2 border-l pl-4 ml-2">
+                  <div className="text-sm">
+                    <p className="font-medium">{user.name}</p>
+                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Mobile Menu Button */}
+              <div className="lg:hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMobileMenu}
+                  aria-label="Toggle menu"
+                  data-testid="mobile-menu-button"
+                >
+                  {mobileMenuOpen ? (
+                    <X className="h-6 w-6" />
+                  ) : (
+                    <Menu className="h-6 w-6" />
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Menu */}
+        {user && mobileMenuOpen && (
+          <div className="lg:hidden pb-4 pt-2" data-testid="mobile-menu">
+            <div className="flex flex-col space-y-2">
               {user.role === "jobseeker" ? (
                 <>
-                  <Link href="/jobseeker/jobs">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/jobseeker/jobs" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <Briefcase className="h-4 w-4" />
                       Browse Jobs
                     </Button>
                   </Link>
-                  <Link href="/jobseeker/applications">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/jobseeker/applications" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <FileText className="h-4 w-4" />
                       My Applications
                     </Button>
                   </Link>
-                   <Link href="/jobseeker/resume">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/jobseeker/resume" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <FileCheck className="h-4 w-4" />
                       Resume Analyzer
                     </Button>
                   </Link>
-                  <Link href="/jobseeker/dashboard">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/mock-interview/setup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      AI Mock Interview
+                    </Button>
+                  </Link>
+                  <Link href="/jobseeker/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <Home className="h-4 w-4" />
                       Dashboard
                     </Button>
@@ -100,20 +211,20 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link href="/recruiter/dashboard">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/recruiter/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <Home className="h-4 w-4" />
                       Dashboard
                     </Button>
                   </Link>
-                  <Link href="/recruiter/companies">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/recruiter/companies" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <Building2 className="h-4 w-4" />
                       Companies
                     </Button>
                   </Link>
-                  <Link href="/recruiter/jobs">
-                    <Button variant="ghost" size="sm" className="gap-2">
+                  <Link href="/recruiter/jobs" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                       <Briefcase className="h-4 w-4" />
                       Jobs
                     </Button>
@@ -121,23 +232,27 @@ export default function Navbar() {
                 </>
               )}
 
-              <div className="flex items-center gap-2 border-l pl-4">
-                <div className="text-sm">
-                  <p className="font-medium">{user.name}</p>
+              <div className="border-t pt-2 mt-2">
+                <div className="px-3 py-2">
+                  <p className="font-medium text-sm">{user.name}</p>
                   <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleSignOut}
-                  className="gap-2"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4" />
+                  Sign Out
                 </Button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </nav>
   );

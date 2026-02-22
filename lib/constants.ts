@@ -146,3 +146,31 @@ export const mappings: Record<string, string> = {
   angular: "angular",
   // ... rest of mappings
 };
+
+
+// Job Categories
+export const JOB_CATEGORIES = [
+  "Software Development",
+  "Data Science",
+  "AI / Machine Learning",
+  "DevOps",
+  "Cyber Security",
+  "UI / UX Design",
+  "Product Management",
+  "Marketing",
+  "Finance",
+];
+
+// Job Roles
+export const JOB_ROLES = [
+  "Frontend Developer",
+  "Backend Developer",
+  "Full Stack Developer",
+  "Data Scientist",
+  "Machine Learning Engineer",
+  "DevOps Engineer",
+  "Cloud Engineer",
+  "UI/UX Designer",
+  "Product Manager",
+  "QA Engineer",
+];

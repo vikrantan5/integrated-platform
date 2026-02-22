@@ -109,11 +109,15 @@ export async function createResumeAnalysis(
       resumeUrl,
       resumeText,
       jobDescription,
+       jobCategory,
+      jobRole,
     } = params;
 
     const aiAnalysis = await analyzeResumeWithAI(
       resumeText,
-      jobDescription
+       jobDescription,
+      jobCategory,
+      jobRole
     );
 
     /* ---------- CATEGORY SCORES ---------- */
