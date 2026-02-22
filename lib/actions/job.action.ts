@@ -238,10 +238,18 @@ export async function saveExternalJobs(
             continue;
           }
         }
+        // Remove undefined values to avoid Firestore errors
+        const cleanedJob: Record<string, any> = {};
+        for (const [key, value] of Object.entries(job)) {
+          if (value !== undefined) {
+            cleanedJob[key] = value;
+          }
+        }
+
 
         // Add to batch
         const docRef = adminDb().collection("jobs").doc(job.id);
-        batch.set(docRef, job);
+       batch.set(docRef, cleanedJob);
         batchCount++;
         saved++;
 
