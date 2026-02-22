@@ -50,8 +50,6 @@ export interface Job {
   postedDate?: string; // Original posting date from external site
 }
 
-
-
 export interface Application {
   id: string;
   jobId: string;
@@ -129,7 +127,6 @@ export interface RouteParams {
   searchParams: Promise<Record<string, string>>;
 }
 
-
 export interface ResumeAnalysis {
   id: string;
   studentId: string;
@@ -165,11 +162,15 @@ export interface CreateResumeAnalysisParams {
   jobRole?: string;
 }
 
-// Subscription types
+// Updated Subscription types to support both old and new structure
+export type PlanType = "monthly" | "yearly";
+export type PlanId = "basic" | "professional" | "enterprise";
+
 export interface Subscription {
   id: string;
   userId: string;
-  planType: "monthly" | "yearly";
+  planType: PlanType; // For backward compatibility
+  planId?: PlanId; // New field for three-tier plans
   status: "active" | "expired" | "cancelled";
   startDate: string;
   endDate: string;
@@ -192,11 +193,82 @@ export interface InterviewUsage {
   updatedAt: string;
 }
 
+// Updated to support both planType and planId
 export interface CreateSubscriptionParams {
   userId: string;
-  planType: "monthly" | "yearly";
+  planType: PlanType;
+  planId?: PlanId; // Optional for backward compatibility
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;
   amount: number;
 }
+
+// Helper function to get display name from subscription
+export const getSubscriptionDisplayName = (subscription: Subscription): string => {
+  // If planId exists (new structure)
+  if (subscription.planId) {
+    switch(subscription.planId) {
+      case "basic": return "Monthly";
+      case "professional": return "Yearly";
+      case "enterprise": return "Enterprise";
+      default: return subscription.planId;
+    }
+  }
+  
+  // Fallback to old structure
+  return subscription.planType === "monthly" ? "Monthly" : "Yearly";
+};
+
+// Helper function to get plan details for UI
+export const getPlanDetails = (planId: PlanId) => {
+  const plans = {
+    basic: {
+      name: "Monthly Plan",
+      displayName: "Monthly",
+      price: 500,
+      priceDisplay: "₹500",
+      period: "month",
+      features: [
+        "Unlimited AI Mock Interviews",
+        "Real-time Video Interview with AI",
+        "Detailed Performance Analytics",
+        "AI-Generated Feedback Reports",
+        "Practice Question Bank",
+        "Resume ATS Analysis"
+      ]
+    },
+    professional: {
+      name: "Yearly Plan",
+      displayName: "Yearly",
+      price: 8000,
+      priceDisplay: "₹8,000",
+      period: "year",
+      features: [
+        "Everything in Monthly Plan",
+        "Priority Support",
+        "Advanced Analytics Dashboard",
+        "Interview History Archive",
+        "Custom Interview Templates",
+        "Early Access to New Features"
+      ]
+    },
+    enterprise: {
+      name: "Enterprise Plan",
+      displayName: "Enterprise",
+      price: 3000,
+      priceDisplay: "₹3,000",
+      period: "month",
+      features: [
+        "Everything in Yearly Plan",
+        "Team Management",
+        "API Access",
+        "Dedicated Account Manager",
+        "Custom Integrations",
+        "SLA Guarantee"
+      ]
+    }
+  };
+  
+  return plans[planId];
+};

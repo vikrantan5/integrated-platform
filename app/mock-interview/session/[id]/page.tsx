@@ -8,6 +8,7 @@ import { Interview } from "@/types";
 import Navbar from "@/components/Navbar";
 import VoiceAgent from "@/components/VoiceAgent";
 import BeyondPresenceAvatar from "@/components/BeyondPresenceAvatar";
+import UserWebcam from "@/components/UserWebcam";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -291,31 +292,24 @@ export default function MockInterviewSession() {
                 </CardContent>
               </Card>
 
-              {/* Right Panel - User */}
+              {/* Right Panel - User Webcam */}
               <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-blue-500/30">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center justify-center space-y-4">
-                    {/* User Avatar */}
-                    <div className="relative">
-                      <div className="h-48 w-48 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center shadow-2xl overflow-hidden">
-                        {auth.currentUser?.photoURL ? (
-                          <img
-                            src={auth.currentUser.photoURL}
-                            alt={userName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600">
-                            <span className="text-6xl font-bold text-white">
-                              {userName.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <h3 className="text-2xl font-bold text-white">{userName}</h3>
+                    {/* Live User Webcam */}
+                    <UserWebcam
+                      userName={userName}
+                      userPhotoURL={auth.currentUser?.photoURL}
+                      className="w-full"
+                      autoStart={true}
+                      onCameraReady={() => console.log("✅ User camera ready")}
+                      onCameraError={(error) => console.error("❌ Camera error:", error)}
+                    />
+                    <h3 className="text-2xl font-bold text-white" data-testid="user-name-label">
+                      {userName}
+                    </h3>
                     <Badge variant="outline" className="text-green-400 border-green-400">
-                      🟢 Ready
+                      🟢 Live
                     </Badge>
                   </div>
                 </CardContent>

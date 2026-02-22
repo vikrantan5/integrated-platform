@@ -9,20 +9,33 @@ export async function POST(req: NextRequest) {
       razorpayPaymentId,
       razorpaySignature,
       userId,
-      planType,
+      planId, // Changed from planType to planId
       amount,
     } = await req.json();
 
+    console.log("Verification request:", {
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+      userId,
+      planId,
+      amount,
+    });
+
+    // Validate required fields
     if (
       !razorpayOrderId ||
       !razorpayPaymentId ||
       !razorpaySignature ||
       !userId ||
-      !planType ||
+      !planId || // Changed from planType to planId
       !amount
     ) {
       return NextResponse.json(
-        { error: "Missing required parameters" },
+        { 
+          error: "Missing required parameters",
+          received: { razorpayOrderId, razorpayPaymentId, razorpaySignature, userId, planId, amount }
+        },
         { status: 400 }
       );
     }
@@ -34,6 +47,12 @@ export async function POST(req: NextRequest) {
       .update(body.toString())
       .digest("hex");
 
+    console.log("Signature verification:", {
+      expected: expectedSignature,
+      received: razorpaySignature,
+      match: expectedSignature === razorpaySignature
+    });
+
     const isAuthentic = expectedSignature === razorpaySignature;
 
     if (!isAuthentic) {
@@ -43,14 +62,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Convert planId to planType for the database (if needed)
+    const planType = planId === "basic" ? "monthly" : 
+                     planId === "professional" ? "yearly" : 
+                     planId;
+
     // Create subscription in database
     const result = await createSubscription({
       userId,
-      planType,
+      planType, // Send planType to database
+      planId, // Also store the original planId
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
-      amount: amount / 100, // Convert paise to rupees
+      amount: amount, // Amount already in paise, no need to divide
     });
 
     if (!result.success) {

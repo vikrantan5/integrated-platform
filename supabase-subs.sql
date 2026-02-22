@@ -42,33 +42,33 @@ ALTER TABLE public.interview_usage ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for subscriptions table
 -- Users can view their own subscriptions
-CREATE POLICY \"Users can view own subscriptions\" ON public.subscriptions
+CREATE POLICY "Users can view own subscriptions" ON public.subscriptions
     FOR SELECT
     USING (user_id = auth.uid()::text);
 
 -- Users can insert their own subscriptions
-CREATE POLICY \"Users can insert own subscriptions\" ON public.subscriptions
+CREATE POLICY "Users can insert own subscriptions" ON public.subscriptions
     FOR INSERT
     WITH CHECK (user_id = auth.uid()::text);
 
 -- Users can update their own subscriptions
-CREATE POLICY \"Users can update own subscriptions\" ON public.subscriptions
+CREATE POLICY "Users can update own subscriptions" ON public.subscriptions
     FOR UPDATE
     USING (user_id = auth.uid()::text);
 
 -- Create policies for interview_usage table
 -- Users can view their own interview usage
-CREATE POLICY \"Users can view own interview usage\" ON public.interview_usage
+CREATE POLICY "Users can view own interview usage" ON public.interview_usage
     FOR SELECT
     USING (user_id = auth.uid()::text);
 
 -- Users can insert their own interview usage
-CREATE POLICY \"Users can insert own interview usage\" ON public.interview_usage
+CREATE POLICY "Users can insert own interview usage" ON public.interview_usage
     FOR INSERT
     WITH CHECK (user_id = auth.uid()::text);
 
 -- Users can update their own interview usage
-CREATE POLICY \"Users can update own interview usage\" ON public.interview_usage
+CREATE POLICY "Users can update own interview usage" ON public.interview_usage
     FOR UPDATE
     USING (user_id = auth.uid()::text);
 

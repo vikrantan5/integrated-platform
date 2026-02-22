@@ -1,11 +1,12 @@
-""use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase/client";
 import { getActiveSubscription } from "@/lib/actions/subscription.action";
 import { Subscription } from "@/types";
-import { SUBSCRIPTION_PLANS } from "@/lib/constants";
+// Fix: Import from subscription-constants instead of constants
+import { SUBSCRIPTION_PLANS } from "@/lib/subscription-constants";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,40 @@ declare global {
     Razorpay: any;
   }
 }
+
+// Define plan mapping for UI display
+const PLAN_DISPLAY = {
+  monthly: {
+    id: "basic", // Map monthly to basic plan
+    name: "Monthly Plan",
+    price: 500,
+    priceDisplay: "₹500",
+    period: "month",
+    features: [
+      "Unlimited AI Mock Interviews",
+      "Real-time Video Interview with AI",
+      "Detailed Performance Analytics",
+      "AI-Generated Feedback Reports",
+      "Practice Question Bank",
+      "Resume ATS Analysis"
+    ]
+  },
+  yearly: {
+    id: "professional", // Map yearly to professional plan
+    name: "Yearly Plan",
+    price: 8000,
+    priceDisplay: "₹8,000",
+    period: "year",
+    features: [
+      "Everything in Monthly Plan",
+      "Priority Support",
+      "Advanced Analytics Dashboard",
+      "Interview History Archive",
+      "Custom Interview Templates",
+      "Early Access to New Features"
+    ]
+  }
+};
 
 export default function SubscriptionPage() {
   const router = useRouter();
@@ -78,11 +113,17 @@ export default function SubscriptionPage() {
         return;
       }
 
-      // Create order
+      // Map UI plan to actual plan ID
+      const planId = planType === "monthly" ? "basic" : "professional";
+
+      // Create order with planId instead of planType
       const orderResponse = await fetch("/api/subscription/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planType, userId }),
+        body: JSON.stringify({ 
+          planId, // Send planId instead of planType
+          userId 
+        }),
       });
 
       const orderData = await orderResponse.json();
@@ -93,7 +134,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      const plan = SUBSCRIPTION_PLANS[planType];
+      const plan = PLAN_DISPLAY[planType];
 
       // Razorpay options
       const options = {
@@ -114,7 +155,7 @@ export default function SubscriptionPage() {
                 razorpayPaymentId: response.razorpay_payment_id,
                 razorpaySignature: response.razorpay_signature,
                 userId,
-                planType,
+                planId, // Send planId instead of planType
                 amount: orderData.amount,
               }),
             });
@@ -208,7 +249,7 @@ export default function SubscriptionPage() {
                     Active Subscription
                   </CardTitle>
                   <CardDescription className="text-green-700">
-                    You have an active {subscription.planType} subscription
+                    You have an active subscription
                   </CardDescription>
                 </div>
                 <Badge className="bg-green-600">Active</Badge>
@@ -218,7 +259,11 @@ export default function SubscriptionPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600">Plan Type</p>
-                  <p className="font-semibold capitalize">{subscription.planType}</p>
+                  <p className="font-semibold capitalize">
+                    {subscription.planId === "basic" ? "Monthly" : 
+                     subscription.planId === "professional" ? "Yearly" : 
+                     subscription.planId}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-600">Start Date</p>
@@ -259,13 +304,13 @@ export default function SubscriptionPage() {
             <CardHeader>
               <CardTitle className="text-2xl">Monthly Plan</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl font-bold">₹500</span>
+                <span className="text-4xl font-bold">{PLAN_DISPLAY.monthly.priceDisplay}</span>
                 <span className="text-gray-600 ml-2">/ month</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <ul className="space-y-3">
-                {SUBSCRIPTION_PLANS.monthly.features.map((feature, index) => (
+                {PLAN_DISPLAY.monthly.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
@@ -274,7 +319,7 @@ export default function SubscriptionPage() {
               </ul>
               <Button
                 onClick={() => handleSubscribe("monthly")}
-                disabled={processingPayment || subscription?.planType === "monthly"}
+                disabled={processingPayment || (subscription?.planId === "basic")}
                 className="w-full py-6 text-lg bg-blue-600 hover:bg-blue-700"
                 data-testid="subscribe-monthly-button"
               >
@@ -283,7 +328,7 @@ export default function SubscriptionPage() {
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Processing...
                   </>
-                ) : subscription?.planType === "monthly" ? (
+                ) : subscription?.planId === "basic" ? (
                   "Current Plan"
                 ) : (
                   "Subscribe Monthly"
@@ -298,7 +343,7 @@ export default function SubscriptionPage() {
             <CardHeader>
               <CardTitle className="text-2xl">Yearly Plan</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl font-bold">₹8,000</span>
+                <span className="text-4xl font-bold">{PLAN_DISPLAY.yearly.priceDisplay}</span>
                 <span className="text-gray-600 ml-2">/ year</span>
               </div>
               <p className="text-sm text-purple-600 font-semibold">
@@ -307,7 +352,7 @@ export default function SubscriptionPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <ul className="space-y-3">
-                {SUBSCRIPTION_PLANS.yearly.features.map((feature, index) => (
+                {PLAN_DISPLAY.yearly.features.map((feature, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{feature}</span>
@@ -316,7 +361,7 @@ export default function SubscriptionPage() {
               </ul>
               <Button
                 onClick={() => handleSubscribe("yearly")}
-                disabled={processingPayment || subscription?.planType === "yearly"}
+                disabled={processingPayment || (subscription?.planId === "professional")}
                 className="w-full py-6 text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 data-testid="subscribe-yearly-button"
               >
@@ -325,7 +370,7 @@ export default function SubscriptionPage() {
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Processing...
                   </>
-                ) : subscription?.planType === "yearly" ? (
+                ) : subscription?.planId === "professional" ? (
                   "Current Plan"
                 ) : (
                   "Subscribe Yearly"
@@ -377,4 +422,3 @@ export default function SubscriptionPage() {
     </div>
   );
 }
-"
