@@ -40,7 +40,17 @@ export interface Job {
   recruiterId: string;
   techStack: string[]; // For AI interview generation
   createdAt: string;
+  // External job fields
+  source?: "recruiter" | "external";
+  externalCompany?: string; // Company name for external jobs
+  externalUrl?: string; // Original job URL
+  scrapedAt?: string; // When job was scraped
+  scrapeStatus?: "success" | "failed" | "pending"; // Scraping status
+  jobType?: string; // Full-time, Part-time, etc.
+  postedDate?: string; // Original posting date from external site
 }
+
+
 
 export interface Application {
   id: string;
@@ -152,3 +162,4 @@ export interface CreateResumeAnalysisParams {
   resumeText: string;
   jobDescription: string;
 }
+

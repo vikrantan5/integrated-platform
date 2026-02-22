@@ -205,3 +205,136 @@ export async function deleteJob(
     return { success: false, error: error.message };
   }
 }
+
+
+// ======================================================
+// ============ EXTERNAL JOBS ACTIONS ====================
+// ======================================================
+
+export async function saveExternalJobs(
+  jobs: Job[]
+): Promise<{ success: boolean; saved: number; skipped: number; errors: string[] }> {
+  try {
+    let saved = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    const batch = adminDb().batch();
+    let batchCount = 0;
+    const MAX_BATCH = 500; // Firestore batch limit
+
+    for (const job of jobs) {
+      try {
+        // Check if job already exists by external URL
+        if (job.externalUrl) {
+          const existing = await adminDb()
+            .collection("jobs")
+            .where("externalUrl", "==", job.externalUrl)
+            .limit(1)
+            .get();
+
+          if (!existing.empty) {
+            skipped++;
+            continue;
+          }
+        }
+
+        // Add to batch
+        const docRef = adminDb().collection("jobs").doc(job.id);
+        batch.set(docRef, job);
+        batchCount++;
+        saved++;
+
+        // Commit batch if we hit the limit
+        if (batchCount >= MAX_BATCH) {
+          await batch.commit();
+          batchCount = 0;
+        }
+      } catch (error: any) {
+        errors.push(`Failed to save job ${job.id}: ${error.message}`);
+      }
+    }
+
+    // Commit remaining batch
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    console.log(`External jobs saved: ${saved}, skipped: ${skipped}`);
+    return { success: true, saved, skipped, errors };
+  } catch (error: any) {
+    console.error("Save external jobs error:", error);
+    return { success: false, saved: 0, skipped: 0, errors: [error.message] };
+  }
+}
+
+export async function getAllJobsMerged(filters?: {
+  status?: string;
+  location?: string;
+  search?: string;
+  source?: "recruiter" | "external" | "all";
+}): Promise<Job[]> {
+  try {
+    let query: FirebaseFirestore.Query = adminDb()
+      .collection("jobs")
+      .orderBy("createdAt", "desc");
+
+    if (filters?.status) {
+      query = query.where("status", "==", filters.status);
+    }
+
+    // Filter by source if specified
+    if (filters?.source && filters.source !== "all") {
+      query = query.where("source", "==", filters.source);
+    }
+
+    const snapshot = await query.limit(200).get();
+    let jobs = serializeCollection<Job>(snapshot);
+
+    // Set default source for legacy jobs without source field
+    jobs = jobs.map((job) => ({
+      ...job,
+      source: job.source || "recruiter",
+    }));
+
+    // Client-side search filtering
+    if (filters?.search) {
+      const s = filters.search.toLowerCase();
+      jobs = jobs.filter(
+        (job) =>
+          job.title?.toLowerCase().includes(s) ||
+          job.description?.toLowerCase().includes(s) ||
+          job.role?.toLowerCase().includes(s) ||
+          job.externalCompany?.toLowerCase().includes(s) ||
+          job.companyName?.toLowerCase().includes(s)
+      );
+    }
+
+    if (filters?.location) {
+      const loc = filters.location.toLowerCase();
+      jobs = jobs.filter((job) =>
+        job.location?.toLowerCase().includes(loc)
+      );
+    }
+
+    return jobs;
+  } catch (error) {
+    console.error("Get merged jobs error:", error);
+    return [];
+  }
+}
+
+export async function getExternalJobsCount(): Promise<number> {
+  try {
+    const snapshot = await adminDb()
+      .collection("jobs")
+      .where("source", "==", "external")
+      .count()
+      .get();
+
+    return snapshot.data().count;
+  } catch (error) {
+    console.error("Get external jobs count error:", error);
+    return 0;
+  }
+}
