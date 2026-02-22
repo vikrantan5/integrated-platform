@@ -18,6 +18,22 @@ export interface ResumeAnalysisResult {
     missing: string[];
   };
   atsCompatibility: "Excellent" | "Good" | "Fair" | "Poor";
+  // New fields for enhanced analysis
+  recommendedSkills?: Array<{
+    skill: string;
+    importance: "Critical" | "Recommended" | "Nice to have";
+    reason: string;
+  }>;
+  contentSuggestions?: Array<{
+    section: string;
+    original: string;
+    suggested: string;
+    reason: string;
+  }>;
+  formatIssues?: string[];
+  missingSections?: string[];
+  isValidResume: boolean;
+  validationMessage?: string;
 }
 
 export async function analyzeResumeWithAI(
@@ -27,15 +43,74 @@ export async function analyzeResumeWithAI(
   jobRole?: string
 ): Promise<ResumeAnalysisResult> {
   try {
-      // Build role-specific context
+    // First, validate if the uploaded content is actually a resume
+    const validationPrompt = `
+    You are a resume validation expert. Analyze the following text and determine if it's a valid resume/CV.
+    
+    **Content to validate:**
+    "${resumeText.substring(0, 1000)}"  // First 1000 chars for quick validation
+    
+    Respond with a JSON object:
+    {
+      "isValidResume": boolean,
+      "validationMessage": "If invalid, explain why. If valid, leave empty or provide a brief confirmation."
+    }
+    
+    Consider these criteria for a valid resume:
+    1. Contains personal/contact information (name, email, phone)
+    2. Has sections like education, experience, or skills
+    3. Includes professional history or educational background
+    4. Is not random text, code, or unrelated content
+    5. Is not a scanned image without extractable text
+    `;
+
+    // Quick validation check
+    const validationCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a resume validation expert. Respond with valid JSON only.",
+        },
+        {
+          role: "user",
+          content: validationPrompt,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.1,
+      max_tokens: 200,
+      response_format: { type: "json_object" },
+    });
+
+    const validationResponse = JSON.parse(validationCompletion.choices[0]?.message?.content || "{}");
+    
+    // If not a valid resume, return early with error
+    if (!validationResponse.isValidResume) {
+      return {
+        overallScore: 0,
+        categoryScores: [],
+        strengths: [],
+        improvements: ["Please upload a valid resume/CV file"],
+        keywords: { found: [], missing: [] },
+        atsCompatibility: "Poor",
+        isValidResume: false,
+        validationMessage: validationResponse.validationMessage || "The uploaded file does not appear to be a valid resume. Please upload a proper resume/CV with your work experience, education, and skills."
+      };
+    }
+
+    // Build role-specific context
     const roleContext = jobCategory && jobRole
       ? `
 **Target Role:** ${jobRole} in ${jobCategory}
-Analyze this resume specifically for the ${jobRole} position in the ${jobCategory} field. Focus on relevant skills, experience, and education for this specific role.`
+**Role Expectations:** 
+- Analyze this resume specifically for the ${jobRole} position in the ${jobCategory} field
+- Identify skills that are CRITICAL for this role but missing from the resume
+- Suggest industry-standard skills and certifications for this role
+- Compare experience level against typical requirements for this position`
       : "";
 
     const prompt = jobDescription
-      ? `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume against the job description and provide detailed feedback.
+      ? `You are an expert ATS (Applicant Tracking System) resume analyzer and career coach. Analyze the following resume against the job description and provide comprehensive, actionable feedback.
 
 **Resume:**
 ${resumeText}
@@ -43,93 +118,171 @@ ${resumeText}
 **Job Description:**
 ${jobDescription}${roleContext}
 
-**CRITICAL: Education Extraction**
-You MUST carefully extract and analyze education information from the resume. Look for:
-- Degree/Diploma names (Bachelor's, Master's, PhD, etc.)
-- Institution/University/College names
-- Graduation years or date ranges
-- Field of study/Major
-- GPA or grades if mentioned
-If education section is missing or unclear, note this in the feedback.
+**CRITICAL REQUIREMENTS FOR ANALYSIS:**
 
+1. **VALIDATION CHECK** - Confirm this is a resume and not random text
+
+2. **EDUCATION EXTRACTION** - You MUST carefully extract and analyze:
+   - Degree/Diploma names (Bachelor's, Master's, PhD, etc.)
+   - Institution/University/College names
+   - Graduation years or date ranges
+   - Field of study/Major
+   - GPA or grades if mentioned
+   - Certifications and additional training
+   If education section is missing or unclear, note this as a critical improvement.
+
+3. **SKILLS GAP ANALYSIS** - For the target role, identify:
+   - CRITICAL skills missing that are essential for the role
+   - RECOMMENDED skills that would strengthen the application
+   - NICE-TO-HAVE skills that could provide competitive advantage
+   - Outdated skills that should be replaced or updated
+   - Industry-specific tools and technologies commonly used in this role
+
+4. **CONTENT IMPROVEMENT SUGGESTIONS** - For each major section:
+   - Work Experience: Suggest stronger action verbs and quantifiable achievements
+   - Education: Format improvements and relevant coursework suggestions
+   - Skills: Better organization and categorization
+   - Summary/Objective: Tailored opening statement for the target role
+   - Projects: Additional relevant projects to showcase
+
+5. **FORMAT & STRUCTURE ANALYSIS**:
+   - Identify ATS compatibility issues
+   - Suggest better section organization
+   - Point out formatting inconsistencies
+   - Recommend length adjustments
+   - Check for proper contact information
+
+6. **ACHIEVEMENT ENHANCEMENT**:
+   - Convert responsibilities into achievements
+   - Add metrics and quantifiable results where missing
+   - Suggest better action verbs
+   - Identify vague descriptions that need strengthening
 
 Provide a comprehensive analysis in the following JSON format:
+
 {
   "overallScore": <number 0-100>,
-    "categoryScores": [
+  "categoryScores": [
     {
-      "category": "Experience Description",
+      "category": "Experience & Achievements",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about work experience, achievements, and relevance>"
+      "feedback": "<detailed feedback about work experience, with specific suggestions for improvement>"
     },
     {
-      "category": "Education",
+      "category": "Education & Certifications",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about education - degree, institution, relevance to role. MUST mention specific degrees and universities found>"
+      "feedback": "<MUST extract and mention specific degrees, institutions. Suggest relevant certifications>"
     },
     {
-      "category": "Skills Relevance",
+      "category": "Skills Match & Relevance",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about technical and soft skills>"
+      "feedback": "<detailed analysis of technical and soft skills, with gap analysis>"
     },
     {
-      "category": "Keyword Optimization",
+      "category": "Content Quality",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about keyword usage and ATS optimization>"
+      "feedback": "<feedback on achievement descriptions, action verbs, quantifiable results>"
     },
     {
-      "category": "Format & Structure",
+      "category": "Format & ATS Compatibility",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about resume formatting and structure>"
+      "feedback": "<detailed feedback about formatting, structure, and ATS optimization>"
     }
   ],
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "improvements": ["improvement 1", "improvement 2", "improvement 3"],
+  "strengths": ["specific strength 1", "specific strength 2", "specific strength 3"],
+  "improvements": ["specific improvement 1", "specific improvement 2", "specific improvement 3"],
   "keywords": {
     "found": ["keyword1", "keyword2"],
-    "missing": ["missing1", "missing2"]
+    "missing": ["critical missing keyword 1", "critical missing keyword 2"]
   },
-  "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor"
+  "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor",
+  "recommendedSkills": [
+    {
+      "skill": "Skill Name",
+      "importance": "Critical" | "Recommended" | "Nice to have",
+      "reason": "Why this skill is important for the role"
+    }
+  ],
+  "contentSuggestions": [
+    {
+      "section": "Experience" | "Education" | "Skills" | "Summary" | "Projects",
+      "original": "Original text (if available)",
+      "suggested": "Improved version with explanation",
+      "reason": "Why this change would improve the resume"
+    }
+  ],
+  "formatIssues": ["specific formatting issue 1", "specific formatting issue 2"],
+  "missingSections": ["missing section 1", "missing section 2"],
+  "isValidResume": true,
+  "validationMessage": ""
 }
 
-Be thorough and specific. Provide actionable feedback.`
-      : `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the following resume${roleContext ? ` for a ${jobRole} position in ${jobCategory}` : ' for general job applications'}.
+**IMPORTANT GUIDELINES:**
+- Be SPECIFIC and ACTIONABLE in all feedback
+- Provide BEFORE/AFTER examples for content improvements
+- For missing critical skills, explain WHY they're important and HOW to acquire/mention them
+- Suggest certifications, courses, or projects to fill skill gaps
+- Highlight any red flags or major issues
+- Consider industry standards and current hiring trends
+- Provide realistic expectations based on experience level
+
+Be thorough and specific. This analysis will be used by job seekers to improve their resumes.`
+      : `You are an expert ATS (Applicant Tracking System) resume analyzer and career coach. Analyze the following resume${roleContext ? ` for a ${jobRole} position in ${jobCategory}` : ' for general job applications'}.
 
 **Resume:**
 ${resumeText}${roleContext}
 
-**CRITICAL: Education Extraction**
-You MUST carefully extract and analyze education information from the resume. Look for:
-- Degree/Diploma names (Bachelor's, Master's, PhD, etc.)
-- Institution/University/College names
-- Graduation years or date ranges
-- Field of study/Major
-- GPA or grades if mentioned
-If education section is missing or unclear, note this in the feedback.
+**CRITICAL REQUIREMENTS FOR ANALYSIS:**
+
+1. **VALIDATION CHECK** - Confirm this is a valid resume
+
+2. **EDUCATION EXTRACTION** - You MUST carefully extract and analyze:
+   - Degree/Diploma names
+   - Institution names  
+   - Graduation years
+   - Field of study
+   - Missing educational elements
+
+3. **SKILLS ASSESSMENT** - For the target industry:
+   - Identify missing in-demand skills
+   - Suggest relevant certifications
+   - Recommend skill upgrades
+
+4. **CONTENT IMPROVEMENTS**:
+   - Suggest stronger action verbs
+   - Recommend adding metrics
+   - Improve vague descriptions
+   - Add missing important sections
+
+5. **FORMAT ANALYSIS**:
+   - ATS compatibility check
+   - Structure improvements
+   - Length optimization
 
 Provide a comprehensive analysis in the following JSON format:
+
 {
   "overallScore": <number 0-100>,
   "categoryScores": [
     {
       "category": "Experience",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about work experience, achievements, relevance>"
+      "feedback": "<detailed feedback with specific improvement suggestions>"
     },
     {
       "category": "Education",
       "score": <number 0-100>,
-      "feedback": "<MUST extract and mention: degree name, institution, graduation year if found. Comment on education relevance to the role>"
+      "feedback": "<MUST extract specific degrees/institutions. Suggest additional certifications>"
     },
     {
       "category": "Skills",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about technical and soft skills>"
+      "feedback": "<detailed analysis with missing skills identified>"
     },
     {
-      "category": "Keywords",
+      "category": "Content & Achievements",
       "score": <number 0-100>,
-      "feedback": "<detailed feedback about keyword optimization>"
+      "feedback": "<feedback on achievement descriptions and action verbs>"
     },
     {
       "category": "Formatting",
@@ -141,19 +294,37 @@ Provide a comprehensive analysis in the following JSON format:
   "improvements": ["improvement 1", "improvement 2", "improvement 3"],
   "keywords": {
     "found": ["keyword1", "keyword2"],
-    "missing": []
+    "missing": ["missing1", "missing2"]
   },
-  "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor"
+  "atsCompatibility": "Excellent" | "Good" | "Fair" | "Poor",
+  "recommendedSkills": [
+    {
+      "skill": "Skill Name",
+      "importance": "Critical" | "Recommended" | "Nice to have",
+      "reason": "Why this skill is valuable"
+    }
+  ],
+  "contentSuggestions": [
+    {
+      "section": "Experience" | "Education" | "Skills" | "Summary" | "Projects",
+      "original": "Original text (if available)",
+      "suggested": "Improved version",
+      "reason": "Why this change improves the resume"
+    }
+  ],
+  "formatIssues": ["formatting issue 1", "formatting issue 2"],
+  "missingSections": ["missing section 1", "missing section 2"],
+  "isValidResume": true,
+  "validationMessage": ""
 }
 
-Be thorough and specific. Provide actionable feedback. Consider best practices for modern resumes.`;
+Be thorough and specific. Provide actionable feedback that helps the candidate immediately improve their resume.`
 
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content:
-            "You are an expert ATS resume analyzer. Always respond with valid JSON only, no additional text or markdown formatting.",
+          content: "You are an expert ATS resume analyzer and career coach. Always respond with valid JSON only, no additional text or markdown formatting. Your feedback should be specific, actionable, and helpful for job seekers.",
         },
         {
           role: "user",
@@ -162,7 +333,7 @@ Be thorough and specific. Provide actionable feedback. Consider best practices f
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.3,
-      max_tokens: 2000,
+      max_tokens: 4000,
       response_format: { type: "json_object" },
     });
 
@@ -170,17 +341,37 @@ Be thorough and specific. Provide actionable feedback. Consider best practices f
     const analysis: ResumeAnalysisResult = JSON.parse(responseText);
 
     // Validate and ensure all fields exist
-    if (!analysis.overallScore) analysis.overallScore = 0;
-    if (!analysis.categoryScores) analysis.categoryScores = [];
-    if (!analysis.strengths) analysis.strengths = [];
-    if (!analysis.improvements) analysis.improvements = [];
-    if (!analysis.keywords) analysis.keywords = { found: [], missing: [] };
-    if (!analysis.atsCompatibility) analysis.atsCompatibility = "Fair";
-
-    return analysis;
+    return {
+      overallScore: analysis.overallScore || 0,
+      categoryScores: analysis.categoryScores || [],
+      strengths: analysis.strengths || [],
+      improvements: analysis.improvements || [],
+      keywords: analysis.keywords || { found: [], missing: [] },
+      atsCompatibility: analysis.atsCompatibility || "Fair",
+      recommendedSkills: analysis.recommendedSkills || [],
+      contentSuggestions: analysis.contentSuggestions || [],
+      formatIssues: analysis.formatIssues || [],
+      missingSections: analysis.missingSections || [],
+      isValidResume: true,
+      validationMessage: analysis.validationMessage || "",
+    };
   } catch (error) {
     console.error("Error analyzing resume with Groq AI:", error);
-    throw new Error("Failed to analyze resume. Please try again.");
+    
+    return {
+      overallScore: 0,
+      categoryScores: [],
+      strengths: [],
+      improvements: ["Unable to analyze resume due to a technical error. Please try again."],
+      keywords: { found: [], missing: [] },
+      atsCompatibility: "Poor",
+      recommendedSkills: [],
+      contentSuggestions: [],
+      formatIssues: ["Analysis failed due to technical error"],
+      missingSections: [],
+      isValidResume: false,
+      validationMessage: "We encountered an error while analyzing your resume. This could be due to the file format or content. Please ensure you're uploading a valid resume and try again."
+    };
   }
 }
 
@@ -291,24 +482,47 @@ export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
 
 // ============ IMPROVED DOCX EXTRACTION ============
 
-
-
 export async function extractTextFromDOCX(fileBuffer: Buffer): Promise<string> {
   try {
-  
-    const mammoth = require('mammoth');
+    // Dynamic import to avoid issues if mammoth is not installed
+    let mammoth;
+    try {
+      mammoth = require('mammoth');
+    } catch (e) {
+      console.error("Mammoth library not installed. Please run: npm install mammoth");
+      throw new Error("DOCX extraction library not available. Please install mammoth.");
+    }
+    
     const result = await mammoth.extractRawText({ buffer: fileBuffer });
     
-      if (!result.value || result.value.trim().length === 0) {
+    if (!result.value || result.value.trim().length === 0) {
       throw new Error("No text content found in DOCX file");
     }
     
     return result.value.trim();
   } catch (error) {
     console.error("Error extracting text from DOCX:", error);
-     throw new Error(
+    throw new Error(
       "Unable to extract text from DOCX file. Please ensure the file is not corrupted."
     );
   }
 }
 
+// Also export a helper function to detect file type and extract accordingly
+export async function extractTextFromFile(
+  fileBuffer: Buffer, 
+  fileType: string
+): Promise<string> {
+  if (fileType === 'application/pdf') {
+    return extractTextFromPDF(fileBuffer);
+  } else if (
+    fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    fileType === 'application/msword' ||
+    fileType === '.docx' ||
+    fileType === '.doc'
+  ) {
+    return extractTextFromDOCX(fileBuffer);
+  } else {
+    throw new Error(`Unsupported file type: ${fileType}. Please upload PDF or DOCX files.`);
+  }
+}
