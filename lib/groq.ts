@@ -156,72 +156,108 @@ Be thorough and specific. Provide actionable feedback. Consider best practices f
   }
 }
 
-// ============ IMPROVED PDF EXTRACTION WITH PDF2JSON PRIMARY =
+// ============ PRODUCTION SAFE PDF EXTRACTION ============
 
 export async function extractTextFromPDF(fileBuffer: Buffer): Promise<string> {
- // Try pdf2json first (more reliable in Node.js environment)
+  console.log("🔍 Starting PDF extraction...");
+  console.log("  - Buffer length:", fileBuffer?.length);
+
+  if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
+    throw new Error("Invalid file buffer");
+  }
+
+  if (fileBuffer.length === 0) {
+    throw new Error("Empty PDF buffer");
+  }
+
+  // ---------- SAFE TEXT DECODER ----------
+  function safeDecodePDFText(str: string) {
+    if (!str) return "";
+
+    try {
+      return decodeURIComponent(str);
+    } catch {
+      try {
+        // fix broken % encodings
+        return decodeURIComponent(str.replace(/%(?![0-9A-Fa-f]{2})/g, "%25"));
+      } catch {
+        return str; // fallback raw
+      }
+    }
+  }
+
+  // =====================================================
+  // TRY PDF2JSON FIRST
+  // =====================================================
   try {
-    const PDFParser = require('pdf2json');
+    const PDFParser = require("pdf2json");
     const pdfParser = new PDFParser();
-    
-    return new Promise((resolve, reject) => {
-      pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+
+    const text: string = await new Promise((resolve, reject) => {
+      pdfParser.on("pdfParser_dataError", (err: any) => {
+        reject(err);
+      });
+
+      pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
         try {
-          // Extract text from all pages
-          let text = '';
-          if (pdfData.Pages) {
-            pdfData.Pages.forEach((page: any) => {
-              if (page.Texts) {
-                page.Texts.forEach((textItem: any) => {
-                  if (textItem.R && textItem.R[0] && textItem.R[0].T) {
-                    // Decode URI component
-                    text += decodeURIComponent(textItem.R[0].T) + ' ';
-                  }
-                });
+          let extractedText = "";
+
+          pdfData?.Pages?.forEach((page: any) => {
+            page?.Texts?.forEach((item: any) => {
+              const raw = item?.R?.[0]?.T;
+              if (raw) {
+                extractedText += safeDecodePDFText(raw) + " ";
               }
-              text += '';
             });
+          });
+
+          if (!extractedText.trim()) {
+            reject(new Error("No selectable text found"));
+            return;
           }
-          
-          if (!text || text.trim().length === 0) {
-            reject(new Error("No text content found in PDF"));
-          } else {
-            resolve(text.trim());
-          }
-        } catch (parseError) {
-          reject(parseError);
+
+          resolve(extractedText);
+        } catch (err) {
+          reject(err);
         }
       });
-      
-      pdfParser.on('pdfParser_dataError', (error: any) => {
-        reject(new Error(`PDF parsing error: ${error.parserError}`));
-      });
-    
-      // Parse the buffer
+
       pdfParser.parseBuffer(fileBuffer);
     });
-  } catch (pdf2jsonError) {
-    console.warn("pdf2json failed, trying pdf-parse as fallback:", pdf2jsonError);
-    
-    // Fallback to pdf-parse
-    try {
-      const pdfParse = require('pdf-parse');
-    const data = await pdfParse(fileBuffer);
-    
-    if (!data.text || data.text.trim().length === 0) {
-      throw new Error("No text content found in PDF");
-    }
-    
-    return data.text;
-        } catch (pdfParseError) {
-      console.error("Both PDF extraction methods failed:", pdfParseError);
 
-      throw new Error(
-         "Unable to extract text from PDF. Please ensure the PDF contains selectable text (not scanned images). Try converting to DOCX format."
-      );
+    console.log("✅ pdf2json success");
+    console.log("  - Text length:", text.length);
+
+    return text.trim();
+
+  } catch (pdf2jsonError) {
+    console.warn("⚠️ pdf2json failed → using pdf-parse fallback");
+    console.warn(pdf2jsonError);
+  }
+
+  // =====================================================
+  // FALLBACK → PDF-PARSE (VERY RELIABLE)
+  // =====================================================
+  try {
+    const pdfParse = require("pdf-parse");
+    const result = await pdfParse(fileBuffer);
+
+    if (!result.text || !result.text.trim()) {
+      throw new Error("No text found in PDF");
     }
-    
-  
+
+    console.log("✅ pdf-parse success");
+    console.log("  - Text length:", result.text.length);
+
+    return result.text.trim();
+
+  } catch (fallbackError) {
+    console.error("❌ All PDF extraction methods failed");
+    console.error(fallbackError);
+
+    throw new Error(
+      "Unable to extract text from PDF. The file may be scanned (image-based) or corrupted."
+    );
   }
 }
 

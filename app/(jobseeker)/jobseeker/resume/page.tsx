@@ -93,12 +93,18 @@ function ResumeAnalyzerContent() {
     setAnalyzing(true);
 
     try {
+       // Convert File to ArrayBuffer, then to Uint8Array (works in browser)
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        const uint8Array = new Uint8Array(arrayBuffer);
+      
+      console.log("📤 File upload info:");
+      console.log("  - File name:", file.name);
+      console.log("  - File size:", file.size, "bytes");
+      console.log("  - File type:", file.type);
+      console.log("  - Uint8Array length:", uint8Array.length);
 
       toast.info("Uploading resume...");
-      const uploadResult = await uploadResumeFile(buffer, file.name, userId);
-
+      const uploadResult = await uploadResumeFile(uint8Array, file.name, userId);
       if (!uploadResult.success || !uploadResult.resumeUrl || !uploadResult.resumeText) {
         toast.error(uploadResult.error || "Failed to upload resume");
         setUploading(false);
